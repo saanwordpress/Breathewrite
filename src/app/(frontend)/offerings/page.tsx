@@ -45,7 +45,7 @@ export default function OfferingsPage() {
                 <div className="aspect-[4/3] bg-[#F9F8F6] relative overflow-hidden flex-shrink-0 flex items-center justify-center p-12 border-b border-border/50">
                   {offering.image ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={offering.image} alt={offering.title} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700 ease-out drop-shadow-sm" />
+                    <img src={offering.image} alt={offering.title} className="w-24 h-24 object-contain group-hover:scale-110 transition-transform duration-700 ease-out opacity-80" />
                   ) : (
                     <div className="flex items-center justify-center text-muted-foreground/50 bg-accent/5 font-medium uppercase tracking-widest text-xs w-full h-full rounded-2xl">
                        Coming Soon

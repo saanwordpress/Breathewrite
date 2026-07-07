@@ -31,10 +31,21 @@ export default function HomePage() {
     <div className="flex flex-col w-full">
       {/* HERO SECTION */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        {/* Placeholder for large calming photography */}
-        <div className="absolute inset-0 z-0 bg-secondary/10" />
-        <div className="container relative z-10 mx-auto px-6 md:px-12 py-24 text-center max-w-4xl">
-          <span className="text-accent uppercase tracking-[0.2em] text-sm font-semibold mb-6 block">
+        {/* Background Video */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 bg-black/40 z-10" />
+          <video 
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            className="w-full h-full object-cover"
+          >
+            <source src="/offerings/01_Home_video_hero-image.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <div className="container relative z-20 mx-auto px-6 md:px-12 py-24 text-center max-w-4xl text-white">
+          <span className="text-white/80 uppercase tracking-[0.2em] text-sm font-semibold mb-6 block">
             Breathe Write
           </span>
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading mb-8 leading-tight">
@@ -44,17 +55,17 @@ export default function HomePage() {
             Through breathing, the body remembers. And you can return – not to who you were told to be – but to who you have always been becoming.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button asChild size="lg" className="rounded-full px-8 py-6 text-lg w-full sm:w-auto">
-              <Link href="/book">
+            <Button asChild size="lg" className="rounded-full px-8 py-6 text-lg w-full sm:w-auto bg-white text-black hover:bg-white/90">
+              <Link href="/calendar">
                 Book Your First Session
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="rounded-full px-8 py-6 text-lg w-full sm:w-auto bg-transparent border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+            <Button asChild variant="outline" size="lg" className="rounded-full px-8 py-6 text-lg w-full sm:w-auto bg-transparent border-white text-white hover:bg-white hover:text-black">
               <Link href="/membership">Explore Membership</Link>
             </Button>
           </div>
-          <div className="mt-16 flex items-center justify-center gap-8 text-sm font-light text-foreground/60">
+          <div className="mt-16 flex items-center justify-center gap-8 text-sm font-light text-white/60">
             <span>Certified Facilitator</span>
             <span className="hidden sm:inline">•</span>
             <span>20+ Years Experience</span>
@@ -70,7 +81,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="aspect-[4/5] bg-muted rounded-[2rem] relative overflow-hidden shadow-2xl">
                {/* eslint-disable-next-line @next/next/no-img-element */}
-               <img src="/offerings/section-2-homepage.png" alt="Rosalind in Morning Light" className="absolute inset-0 w-full h-full object-cover" />
+               <img src="/offerings/rosalind-image.jpg" alt="Rosalind in Morning Light" className="absolute inset-0 w-full h-full object-cover" />
             </div>
             <div className="space-y-8">
               <div className="space-y-4">
@@ -80,7 +91,17 @@ export default function HomePage() {
                 </h2>
               </div>
               
-              <ExpandableJourneyText />
+              <div className="space-y-4 text-lg font-light text-foreground/80 leading-relaxed">
+                <p>
+                  I’m Rosalind – a certified Neurodynamic Breathwork (NDB) facilitator, writer and scripted development consultant. After 20+ years of working in Film & TV, I went through a challenging period of personal loss, burnout and disconnection. I followed the pull to what felt grounding; creative play, poetry, hiking – and along that path I discovered breathwork.
+                </p>
+                <p>
+                  My experience with NDB has been deeply healing. It has helped me regulate my nervous system and anxiety, surrender what I cannot control, reconnect with the subconscious and honour the wisdom of the body.
+                </p>
+                <p>
+                  What began as a personal healing tool has evolved into a calling – to hold space for others seeking calm, creative flow, wholeness or simply a space to breathe and be.
+                </p>
+              </div>
 
             </div>
           </div>
@@ -122,17 +143,14 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Mock Offering Cards */}
             {[
-              { title: 'Breathe & Flow', time: '60 Mins', type: 'Online Group', image: '/offerings/breathe-and-flow.jpg', slug: 'breathe-and-flow' },
-              { title: 'Neurodynamic Breathwork', time: '120 Mins', type: 'Online Group', image: '/offerings/neurodynamic-breathwork.jpg', slug: 'neurodynamic-breathwork' },
-              { title: 'Private 1:1 Session | 60 mins', time: '60 Mins', type: 'Online Private', image: '/offerings/breathe-and-go.jpg', slug: 'private-11-online-session-60-mins' }
+              { title: 'Breathe & Flow', time: '60 Mins', type: 'Online Group', image: '/offerings/Breathe-Flow-icon.png', slug: 'breathe-and-flow' },
+              { title: 'Neurodynamic Breathwork', time: '120 Mins', type: 'Online Group', image: '/offerings/Neurodynamic-Breathwork-icon.png', slug: 'neurodynamic-breathwork' },
+              { title: 'Private 1:1 Session | 60 mins', time: '60 Mins', type: 'Online Private', image: '/offerings/Private-11-Online-Session-60mins-icon.png', slug: 'private-11-online-session-60-mins' }
             ].map((offering, idx) => (
               <div key={idx} className="group relative rounded-[2rem] overflow-hidden border border-border bg-card p-2 flex flex-col h-full hover:shadow-2xl transition-all duration-500">
-                <Link href={`/offerings/${offering.slug}`} className="block absolute inset-0 z-10">
-                  <span className="sr-only">View {offering.title}</span>
-                </Link>
-                <div className="aspect-[4/3] bg-muted rounded-[1.5rem] mb-6 relative overflow-hidden">
+                <div className="aspect-[4/3] bg-[#F9F8F6] rounded-[1.5rem] mb-6 relative overflow-hidden p-12 flex items-center justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={offering.image} alt={offering.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+                  <img src={offering.image} alt={offering.title} className="w-24 h-24 object-contain group-hover:scale-110 transition-transform duration-700 ease-out opacity-80" />
                 </div>
                 <div className="px-6 pb-8 flex flex-col flex-grow">
                   <div className="flex justify-between items-start mb-4">
@@ -144,7 +162,7 @@ export default function HomePage() {
                     <span>{offering.type}</span>
                   </div>
                   <Button asChild className="w-full rounded-full relative z-20">
-                    <Link href={`/book/${offering.slug}`}>View Schedule</Link>
+                    <Link href={`/calendar`}>Book Now</Link>
                   </Button>
                 </div>
               </div>
@@ -167,8 +185,11 @@ export default function HomePage() {
         </div>
 
         <div className="container relative z-10 mx-auto px-6 md:px-12">
-          <div className="max-w-3xl">
-            <blockquote className="text-3xl md:text-5xl font-serif italic text-white leading-tight mb-8 drop-shadow-lg">
+          <div className="max-w-4xl mx-auto text-center">
+            <blockquote 
+              style={{ fontFamily: "'Romie', serif", fontWeight: 300 }}
+              className="text-4xl md:text-5xl lg:text-6xl italic text-white leading-tight mb-8 drop-shadow-lg"
+            >
               "In this silent breath, I feel the weight of the world fall away, and all that remains is the heartbeat of existence itself"
             </blockquote>
             <p className="text-white/80 font-medium tracking-wide text-lg drop-shadow-md">
@@ -179,7 +200,7 @@ export default function HomePage() {
       </section>
 
       {/* TESTIMONIALS SECTION */}
-      <section className="py-24 bg-[#F9F8F6]">
+      <section className="py-32 md:py-48 bg-[#F9F8F6]">
         <div className="container mx-auto px-6 md:px-12 text-center">
           <span className="text-accent uppercase tracking-[0.2em] text-sm font-semibold mb-4 block">
             testimonials

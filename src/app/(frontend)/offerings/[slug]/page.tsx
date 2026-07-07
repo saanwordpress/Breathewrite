@@ -373,7 +373,10 @@ export default async function OfferingDetailPage({ params }: { params: Promise<{
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                 <div className="absolute bottom-6 left-6 right-6 bg-white/95 backdrop-blur-xl rounded-2xl p-8 shadow-xl transform transition-transform duration-500">
                   <span className="text-6xl text-[#EBCBBA] font-serif leading-none absolute -top-6 left-6">"</span>
-                  <p className="text-xl font-heading text-primary leading-snug mt-4 relative z-10 italic">
+                  <p 
+                    style={{ fontFamily: "'Romie', serif", fontWeight: 300 }}
+                    className="text-2xl text-primary leading-snug mt-4 relative z-10 italic"
+                  >
                     The breath is the bridge between your body and your mind.
                   </p>
                   <p className="text-sm text-muted-foreground mt-4 font-medium">— Rosalind</p>
