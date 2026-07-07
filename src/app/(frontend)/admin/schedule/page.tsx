@@ -1,14 +1,54 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { ArrowLeft, Clock, CalendarX } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
+import { ScheduleManager } from "./components/ScheduleManager"
+
+// Import prisma safely
+import { PrismaClient } from '@prisma/client'
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
+export const prisma = globalForPrisma.prisma || new PrismaClient()
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+// Default Mon-Fri 9-5 schedule if db is empty or disconnected
+const DEFAULT_SCHEDULE = [
+  { dayOfWeek: 0, startTime: "09:00", endTime: "17:00", isWorking: false },
+  { dayOfWeek: 1, startTime: "09:00", endTime: "17:00", isWorking: true },
+  { dayOfWeek: 2, startTime: "09:00", endTime: "17:00", isWorking: true },
+  { dayOfWeek: 3, startTime: "09:00", endTime: "17:00", isWorking: true },
+  { dayOfWeek: 4, startTime: "09:00", endTime: "17:00", isWorking: true },
+  { dayOfWeek: 5, startTime: "09:00", endTime: "17:00", isWorking: true },
+  { dayOfWeek: 6, startTime: "09:00", endTime: "17:00", isWorking: false },
+]
 
 export default async function SchedulePage() {
   const session = await auth()
   // @ts-ignore
   if (!session?.user || session.user.role !== 'ADMIN') {
     redirect('/')
+  }
+
+  let scheduleData = [...DEFAULT_SCHEDULE]
+  let overridesData: any[] = []
+
+  try {
+    const fetchedSchedule = await prisma.availabilitySchedule.findMany()
+    if (fetchedSchedule.length > 0) {
+      // Merge with default to ensure all 7 days exist
+      scheduleData = DEFAULT_SCHEDULE.map(defaultDay => {
+        const found = fetchedSchedule.find(s => s.dayOfWeek === defaultDay.dayOfWeek)
+        return found ? found : defaultDay
+      })
+    }
+
+    const fetchedOverrides = await prisma.availabilityOverride.findMany({
+      where: { date: { gte: new Date() } },
+      orderBy: { date: 'asc' }
+    })
+    
+    overridesData = fetchedOverrides
+  } catch (error) {
+    console.warn("Could not fetch schedule data. Ensure DATABASE_URL is set.", error)
   }
 
   return (
@@ -24,58 +64,9 @@ export default async function SchedulePage() {
           </p>
         </div>
 
-        <div className="grid gap-8">
-          {/* Weekly Hours Card */}
-          <div className="bg-card border border-border rounded-3xl p-8 shadow-sm">
-            <div className="flex items-start justify-between mb-8">
-              <div>
-                <h2 className="text-2xl font-heading flex items-center gap-3">
-                  <Clock className="w-6 h-6 text-primary" />
-                  Weekly Hours
-                </h2>
-                <p className="text-muted-foreground text-sm mt-1">Your standard recurring schedule.</p>
-              </div>
-              <Button variant="outline" className="rounded-full">Edit Weekly Hours</Button>
-            </div>
-            
-            <div className="space-y-4">
-              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((day) => (
-                <div key={day} className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
-                  <span className="font-medium w-32">{day}</span>
-                  <span className="text-muted-foreground">09:00 AM - 05:00 PM</span>
-                </div>
-              ))}
-              <div className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
-                <span className="font-medium w-32 text-muted-foreground">Saturday</span>
-                <span className="text-muted-foreground bg-muted px-3 py-1 rounded-full text-xs uppercase tracking-wider">Unavailable</span>
-              </div>
-              <div className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
-                <span className="font-medium w-32 text-muted-foreground">Sunday</span>
-                <span className="text-muted-foreground bg-muted px-3 py-1 rounded-full text-xs uppercase tracking-wider">Unavailable</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Date Overrides Card */}
-          <div className="bg-card border border-border rounded-3xl p-8 shadow-sm">
-            <div className="flex items-start justify-between mb-8">
-              <div>
-                <h2 className="text-2xl font-heading flex items-center gap-3">
-                  <CalendarX className="w-6 h-6 text-primary" />
-                  Date Overrides
-                </h2>
-                <p className="text-muted-foreground text-sm mt-1">Block out holidays, vacations, or custom hours for specific dates.</p>
-              </div>
-              <Button className="rounded-full">Add Override</Button>
-            </div>
-
-            <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl">
-              <CalendarX className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-              <p className="text-muted-foreground">No date overrides configured yet.</p>
-            </div>
-          </div>
-        </div>
+        <ScheduleManager initialSchedule={scheduleData} initialOverrides={overridesData} />
       </div>
     </div>
   )
 }
+
