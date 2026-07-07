@@ -4,39 +4,37 @@ import { auth } from "@/auth"
 import { stripe } from "@/lib/stripe"
 // import { prisma } from "@/auth" 
 import { redirect } from "next/navigation"
-import { getEvents } from "@/lib/mock-db"
 
-export async function createCheckoutSession(eventId: string, participants: number, wantsMembership: boolean) {
+export async function createCheckoutSession(slug: string, dateStr: string, timeStr: string, durationMins: number, price: number, wantsMembership: boolean) {
   const session = await auth()
   
   if (!session?.user?.id) {
     // Save state in cookies or URL params, then redirect to login
-    redirect(`/login?callbackUrl=/book?eventId=${eventId}`)
+    redirect(`/login?callbackUrl=/book/${slug}?date=${dateStr}&time=${timeStr}`)
   }
 
   const userId = session.user.id
   // @ts-ignore
   const isMember = session.user.isMember
 
-  const events = await getEvents()
-  const event = events.find(e => e.id === eventId)
-  if (!event) throw new Error('Event not found')
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const [hours, minutes] = timeStr.split(':').map(Number)
+  
+  const startTime = new Date(Date.UTC(year, month - 1, day, hours, minutes))
+  const endTime = new Date(startTime.getTime() + durationMins * 60000)
 
-  if (isMember) {
+  if (isMember && !wantsMembership) {
     // Members book for free
     /*
     await prisma.booking.create({
       data: {
         userId,
-        eventId,
+        offeringSlug: slug,
+        startTime,
+        endTime,
+        pricePaid: 0,
         status: 'CONFIRMED',
       }
-    })
-    
-    // Decrease capacity
-    await prisma.event.update({
-      where: { id: eventId },
-      data: { capacity: { decrement: participants } }
     })
     */
     
@@ -49,12 +47,12 @@ export async function createCheckoutSession(eventId: string, participants: numbe
   if (wantsMembership) {
     line_items.push({
       price_data: {
-        currency: 'usd',
+        currency: 'gbp', // BreatheWrite uses £
         product_data: {
           name: 'Monthly Membership',
           description: 'Unlimited access to online group sessions.',
         },
-        unit_amount: 4500, // $45.00
+        unit_amount: 4500, // £45.00
         recurring: {
           interval: 'month' as const,
         },
@@ -64,27 +62,29 @@ export async function createCheckoutSession(eventId: string, participants: numbe
   } else {
     line_items.push({
       price_data: {
-        currency: 'usd',
+        currency: 'gbp', // BreatheWrite uses £
         product_data: {
-          name: event.title,
-          description: `60 Mins Session`,
+          name: `Booking: ${slug.replace(/-/g, ' ')}`,
+          description: `${dateStr} at ${timeStr} (${durationMins} mins)`,
         },
-        unit_amount: Math.round(Number(event.price || 35) * 100),
+        unit_amount: Math.round(Number(price || 35) * 100),
       },
-      quantity: participants,
+      quantity: 1,
     })
   }
 
   const stripeSession = await stripe.checkout.sessions.create({
-    payment_method_types: ['card', 'paypal'],
+    payment_method_types: ['card'],
     line_items,
     mode: wantsMembership ? 'subscription' : 'payment',
     success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?booking=success`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/book?eventId=${eventId}&canceled=true`,
+    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/book/${slug}?canceled=true`,
     metadata: {
       userId,
-      eventId,
-      participants: participants.toString(),
+      offeringSlug: slug,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      pricePaid: wantsMembership ? "0" : price.toString(),
       type: wantsMembership ? 'membership' : 'booking'
     },
     customer_email: session.user.email || undefined,
@@ -92,3 +92,4 @@ export async function createCheckoutSession(eventId: string, participants: numbe
 
   redirect(stripeSession.url!)
 }
+

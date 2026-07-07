@@ -49,6 +49,39 @@ export const offeringTemplate = defineType({
       },
     }),
     defineField({
+      name: 'modality',
+      title: 'Modality',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Online', value: 'online' },
+          { title: 'In Person', value: 'in_person' },
+          { title: 'Online / In Person', value: 'hybrid' }
+        ],
+        layout: 'radio'
+      }
+    }),
+    defineField({
+      name: 'idealFor',
+      title: 'Ideal For',
+      type: 'string',
+      description: 'e.g. "Gentle Recharge", "Short Reset", "Creative Flow"'
+    }),
+    defineField({
+      name: 'status',
+      title: 'Status',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Active (Bookable)', value: 'active' },
+          { title: 'Coming Soon', value: 'coming_soon' },
+          { title: 'Enquiry Only', value: 'enquiry' }
+        ],
+        layout: 'dropdown'
+      },
+      initialValue: 'active'
+    }),
+    defineField({
       name: 'content',
       title: 'Detailed Content',
       type: 'array',

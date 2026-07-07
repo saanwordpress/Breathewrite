@@ -328,10 +328,7 @@ export default async function OfferingDetailPage({ params }: { params: Promise<{
 
                 <div className="space-y-4 mb-10">
                   <Button asChild className="w-full rounded-full py-7 text-lg hover:-translate-y-1 transition-transform shadow-md hover:shadow-xl font-medium">
-                    <Link href="/book">View Upcoming Dates</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="w-full rounded-full py-7 text-lg bg-[#EBCBBA]/20 border-transparent text-primary hover:bg-[#EBCBBA]/30 hover:border-[#EBCBBA] hover:-translate-y-1 transition-all font-medium">
-                    <Link href="/book">Book This Session</Link>
+                    <Link href={`/book/${slug}`}>Choose Date & Time</Link>
                   </Button>
                 </div>
 
@@ -420,7 +417,7 @@ export default async function OfferingDetailPage({ params }: { params: Promise<{
             </div>
           </div>
           <Button asChild className="rounded-full py-7 px-10 text-lg hover:-translate-y-1 transition-transform shadow-lg hover:shadow-xl font-medium w-full md:w-auto">
-            <Link href="/book">View Upcoming Dates</Link>
+            <Link href={`/book/${slug}`}>Choose Date & Time</Link>
           </Button>
         </div>
       </section>

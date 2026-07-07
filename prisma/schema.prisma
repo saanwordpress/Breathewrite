@@ -68,37 +68,39 @@ enum Role {
   CUSTOMER
 }
 
-model Event {
-  id            String    @id @default(cuid())
-  offeringSlug  String    // References the Offering in Sanity CMS
-  title         String    // Snapshot of the title
-  date          DateTime
-  durationMins  Int
-  capacity      Int
-  price         Float
-  meetLink      String?
-  isPublic      Boolean   @default(true) // If false, only members can see/book
-  
-  bookings      Booking[]
+model AvailabilitySchedule {
+  id        String   @id @default(cuid())
+  dayOfWeek Int      @unique // 0 = Sunday, 1 = Monday, etc.
+  startTime String   // e.g., "09:00"
+  endTime   String   // e.g., "17:00"
+  isWorking Boolean  @default(true)
+}
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+model AvailabilityOverride {
+  id        String   @id @default(cuid())
+  date      DateTime @unique // specific date (e.g., 2026-12-25), should be stored at midnight UTC
+  isWorking Boolean  @default(false)
+  startTime String?  // e.g., "10:00"
+  endTime   String?  // e.g., "14:00"
 }
 
 model Booking {
-  id            String    @id @default(cuid())
-  userId        String
-  eventId       String
-  status        BookingStatus @default(PENDING)
-  stripeSessionId String? @unique
+  id              String    @id @default(cuid())
+  userId          String
+  offeringSlug    String    // References the Offering in Sanity CMS
+  startTime       DateTime
+  endTime         DateTime
+  pricePaid       Float     @default(0) // 0 if member
+  status          BookingStatus @default(PENDING)
+  stripeSessionId String?   @unique
   
-  user          User      @relation(fields: [userId], references: [id])
-  event         Event     @relation(fields: [eventId], references: [id])
+  user            User      @relation(fields: [userId], references: [id])
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  @@unique([userId, eventId]) // Prevent double booking the same event
+  // Index on times for fast query of overlaps
+  @@index([startTime, endTime])
 }
 
 enum BookingStatus {

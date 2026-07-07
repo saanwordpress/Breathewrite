@@ -36,7 +36,7 @@ export default async function AdminDashboardPage() {
               <Link href="/studio" target="_blank">Open Sanity Studio</Link>
             </Button>
             <Button asChild className="rounded-full">
-              <Link href="/admin/events/new">Create Event</Link>
+              <Link href="/admin/schedule">Manage Schedule</Link>
             </Button>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default async function AdminDashboardPage() {
                  <Users className="w-5 h-5 text-muted-foreground" />
                  <span>Manage Members</span>
                </Link>
-               <Link href="/admin/events" className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors">
+               <Link href="/admin/schedule" className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors">
                  <CalendarIcon className="w-5 h-5 text-muted-foreground" />
                  <span>Manage Schedule</span>
                </Link>

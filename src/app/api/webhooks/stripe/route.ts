@@ -44,16 +44,13 @@ export async function POST(req: Request) {
       await prisma.booking.create({
         data: {
           userId: metadata.userId,
-          eventId: metadata.eventId,
+          offeringSlug: metadata.offeringSlug,
+          startTime: new Date(metadata.startTime),
+          endTime: new Date(metadata.endTime),
+          pricePaid: parseFloat(metadata.pricePaid),
           status: 'CONFIRMED',
           stripeSessionId: session.id,
         }
-      })
-      
-      // Decrease capacity
-      await prisma.event.update({
-        where: { id: metadata.eventId },
-        data: { capacity: { decrement: parseInt(metadata.participants || '1') } }
       })
       */
 
