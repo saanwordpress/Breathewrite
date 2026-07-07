@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useTransition } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Clock, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
+import { createCheckoutSession } from '@/app/actions/checkout'
 
 // Define the mock data shape based on the offerings data
 const OFFERINGS: Record<string, any> = {
@@ -67,10 +68,13 @@ export default function BookingPage() {
   }
 
   const selectedDayData = availability.find(d => d.date === selectedDate)
+  const [isPending, startTransition] = useTransition()
 
   const handleCheckout = () => {
-    // Navigate to checkout action with date and time
-    router.push(`/checkout?slug=${slug}&date=${selectedDate}&time=${selectedTime}`)
+    if (!selectedDate || !selectedTime) return
+    startTransition(() => {
+      createCheckoutSession(slug, selectedDate, selectedTime, offering.durationMins, offering.price, false)
+    })
   }
 
   return (
@@ -203,8 +207,12 @@ export default function BookingPage() {
                               animate={{ opacity: 1, width: 'auto' }}
                               exit={{ opacity: 0, width: 0 }}
                             >
-                              <Button className="h-full rounded-xl px-6 bg-[#EBCBBA] text-primary hover:bg-[#EBCBBA]/80 whitespace-nowrap" onClick={handleCheckout}>
-                                Next
+                              <Button 
+                                disabled={isPending}
+                                className="h-full rounded-xl px-6 bg-[#EBCBBA] text-primary hover:bg-[#EBCBBA]/80 whitespace-nowrap" 
+                                onClick={handleCheckout}
+                              >
+                                {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Next'}
                               </Button>
                             </motion.div>
                           )}
