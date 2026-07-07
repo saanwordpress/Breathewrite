@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { name: 'Offerings', href: '/offerings' },
   { name: 'Calendar', href: '/calendar' },
   { name: 'Membership', href: '/membership' },
+  { name: 'Testimonials', href: '/testimonials' },
   { name: 'Journal', href: '/journal' },
 ]
 
