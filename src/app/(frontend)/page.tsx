@@ -45,13 +45,10 @@ export default function HomePage() {
           </video>
         </div>
         <div className="container relative z-20 mx-auto px-6 md:px-12 py-24 text-center max-w-4xl text-white">
-          <span className="text-white/80 uppercase tracking-[0.2em] text-sm font-semibold mb-6 block">
-            Breathe Write
-          </span>
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading mb-8 leading-tight">
             Be still. Breathe. Know.
           </h1>
-          <p className="text-xl md:text-2xl font-light text-foreground/80 mb-12 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl md:text-2xl font-light text-white mb-12 max-w-2xl mx-auto leading-relaxed">
             Through breathing, the body remembers. And you can return – not to who you were told to be – but to who you have always been becoming.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -134,7 +131,7 @@ export default function HomePage() {
       {/* FEATURED CLASSES / OFFERINGS */}
       <section className="py-24 bg-background">
         <div className="container mx-auto px-6 md:px-12">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-6">
             <h2 className="text-4xl md:text-5xl font-heading">Our Offerings</h2>
             <Button asChild variant="outline" className="rounded-full">
               <Link href="/offerings">View All Offerings</Link>
@@ -147,12 +144,12 @@ export default function HomePage() {
               { title: 'Neurodynamic Breathwork', time: '120 Mins', type: 'Online Group', image: '/offerings/Neurodynamic-Breathwork-icon.png', slug: 'neurodynamic-breathwork' },
               { title: 'Private 1:1 Session | 60 mins', time: '60 Mins', type: 'Online Private', image: '/offerings/Private-11-Online-Session-60mins-icon.png', slug: 'private-11-online-session-60-mins' }
             ].map((offering, idx) => (
-              <div key={idx} className="group relative rounded-[2rem] overflow-hidden border border-border bg-card p-2 flex flex-col h-full hover:shadow-2xl transition-all duration-500">
-                <div className="aspect-[4/3] bg-[#F9F8F6] rounded-[1.5rem] mb-6 relative overflow-hidden p-12 flex items-center justify-center">
+              <div key={idx} className="group relative rounded-[2rem] overflow-hidden border border-border bg-card p-6 flex flex-col h-full hover:shadow-2xl transition-all duration-500">
+                <div className="mb-6 flex justify-start">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={offering.image} alt={offering.title} className="w-24 h-24 object-contain group-hover:scale-110 transition-transform duration-700 ease-out opacity-80" />
+                  <img src={offering.image} alt={offering.title} className="w-16 h-16 object-contain group-hover:scale-110 transition-transform duration-700 ease-out opacity-80" />
                 </div>
-                <div className="px-6 pb-8 flex flex-col flex-grow">
+                <div className="flex flex-col flex-grow">
                   <div className="flex justify-between items-start mb-4">
                     <h3 className="text-2xl font-heading">{offering.title}</h3>
                   </div>

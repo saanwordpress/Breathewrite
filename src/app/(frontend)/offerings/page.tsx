@@ -41,18 +41,18 @@ export default function OfferingsPage() {
         <div className="container mx-auto px-6 md:px-12">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {OFFERINGS.map((offering) => (
-              <div key={offering.slug} className="group relative rounded-[2rem] overflow-hidden border border-border bg-white shadow-sm flex flex-col h-full hover:shadow-2xl transition-all duration-500">
-                <div className="aspect-[4/3] bg-[#F9F8F6] relative overflow-hidden flex-shrink-0 flex items-center justify-center p-12 border-b border-border/50">
+              <div key={offering.slug} className="group relative rounded-[2rem] overflow-hidden border border-border bg-white shadow-sm flex flex-col h-full hover:shadow-2xl transition-all duration-500 p-6">
+                <div className="mb-6 flex justify-start">
                   {offering.image ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={offering.image} alt={offering.title} className="w-24 h-24 object-contain group-hover:scale-110 transition-transform duration-700 ease-out opacity-80" />
+                    <img src={offering.image} alt={offering.title} className="w-20 h-20 object-contain group-hover:scale-110 transition-transform duration-700 ease-out opacity-80" />
                   ) : (
-                    <div className="flex items-center justify-center text-muted-foreground/50 bg-accent/5 font-medium uppercase tracking-widest text-xs w-full h-full rounded-2xl">
-                       Coming Soon
+                    <div className="flex items-center justify-center text-muted-foreground/50 bg-accent/5 font-medium uppercase tracking-widest text-xs w-20 h-20 rounded-2xl">
+                       TBA
                     </div>
                   )}
                 </div>
-                <div className="p-8 flex flex-col flex-grow">
+                <div className="flex flex-col flex-grow">
                   <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium uppercase tracking-wider mb-4">
                     <span className="bg-secondary/10 text-secondary px-3 py-1 rounded-full">{offering.time}</span>
                     <span className="bg-primary/5 text-primary px-3 py-1 rounded-full">{offering.type}</span>

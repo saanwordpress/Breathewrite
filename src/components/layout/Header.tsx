@@ -34,6 +34,16 @@ export function Header() {
     setIsMobileMenuOpen(false)
   }, [pathname])
 
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => { document.body.style.overflow = 'unset' }
+  }, [isMobileMenuOpen])
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -89,7 +99,7 @@ export function Header() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-background flex flex-col pt-6 px-6"
+            className="fixed inset-0 z-[100] bg-[#F9F8F6] flex flex-col pt-6 px-6 overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-12">
               <Link href="/" className="font-heading text-2xl font-semibold tracking-wide text-primary">
