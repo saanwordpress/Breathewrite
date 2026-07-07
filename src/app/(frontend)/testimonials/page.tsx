@@ -40,13 +40,21 @@ export default function TestimonialsPage() {
 
       <TestimonialCarousel testimonials={remainingTestimonials} />
 
-      <FloatingQuote quote="I finally felt like myself again." />
+      <FloatingQuote 
+        quote="I finally felt like myself again." 
+        author="Sarah M." 
+        role="Breathwork Member" 
+      />
 
       <VideoTestimonials />
 
       <SuccessStoryTimeline />
 
-      <FloatingQuote quote="The time came when the risk to remain tight in a bud was more painful than the risk it took to blossom." />
+      <FloatingQuote 
+        quote="The time came when the risk to remain tight in a bud was more painful than the risk it took to blossom." 
+        author="Anaïs Nin" 
+        role="Author"
+      />
 
       <MemberStories />
 
