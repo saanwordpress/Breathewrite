@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Wind, Brain, Heart, Sparkles } from 'lucide-react'
+import { ArrowRight, Wind, Brain, Heart, Sparkles, Star } from 'lucide-react'
+import { ExpandableJourneyText } from '@/components/expandable-journey-text'
 
 const BENEFITS = [
   {
@@ -37,10 +38,10 @@ export default function HomePage() {
             Breathe Write
           </span>
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading mb-8 leading-tight">
-            Take A Breath.
+            Be still. Breathe. Know.
           </h1>
           <p className="text-xl md:text-2xl font-light text-foreground/80 mb-12 max-w-2xl mx-auto leading-relaxed">
-            A safe space where people disconnect from the noise of everyday life and reconnect with their intuition, creativity and inner calm.
+            Through breathing, the body remembers. And you can return – not to who you were told to be – but to who you have always been becoming.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button asChild size="lg" className="rounded-full px-8 py-6 text-lg w-full sm:w-auto">
@@ -67,28 +68,20 @@ export default function HomePage() {
       <section className="py-24 bg-background">
         <div className="container mx-auto px-6 md:px-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div className="aspect-[4/5] bg-muted rounded-2xl relative overflow-hidden">
-               {/* Placeholder for Rosalind's Photo */}
-               <div className="absolute inset-0 flex items-center justify-center text-muted-foreground font-light">
-                 Image: Rosalind in Morning Light
-               </div>
+            <div className="aspect-[4/5] bg-muted rounded-[2rem] relative overflow-hidden shadow-2xl">
+               {/* eslint-disable-next-line @next/next/no-img-element */}
+               <img src="/offerings/section-2-homepage.png" alt="Rosalind in Morning Light" className="absolute inset-0 w-full h-full object-cover" />
             </div>
             <div className="space-y-8">
-              <h2 className="text-4xl md:text-5xl font-heading leading-tight">
-                Healing begins. <br />
-                <span className="text-secondary">Creativity awakens.</span>
-              </h2>
-              <div className="space-y-4 text-lg font-light text-foreground/80 leading-relaxed">
-                <p>
-                  After burnout, grief, and personal loss, Rosalind discovered Neurodynamic Breathwork. It became the anchor that allowed her to process what words could not.
-                </p>
-                <p>
-                  With over 20 years in Film & TV as a writer and script development consultant, she now guides others to find their own stillness. Every breath becomes an invitation to surrender. Insight arrives. Peace becomes possible.
-                </p>
+              <div className="space-y-4">
+                <span className="text-accent uppercase tracking-widest text-sm font-semibold block">MY JOURNEY</span>
+                <h2 className="text-4xl md:text-5xl font-heading leading-tight text-primary">
+                  From burnout to breath
+                </h2>
               </div>
-              <Button asChild variant="link" className="px-0 text-lg text-accent hover:text-primary transition-colors">
-                <Link href="/about">Read Rosalind's Story &rarr;</Link>
-              </Button>
+              
+              <ExpandableJourneyText />
+
             </div>
           </div>
         </div>
@@ -133,11 +126,11 @@ export default function HomePage() {
               { title: 'Neurodynamic Breathwork', time: '120 Mins', type: 'Online Group', image: '/offerings/neurodynamic-breathwork.jpg', slug: 'neurodynamic-breathwork' },
               { title: 'Private 1:1 Session | 60 mins', time: '60 Mins', type: 'Online Private', image: '/offerings/breathe-and-go.jpg', slug: 'private-11-online-session-60-mins' }
             ].map((offering, idx) => (
-              <div key={idx} className="group relative rounded-3xl overflow-hidden border border-border bg-card p-1 flex flex-col h-full hover:shadow-xl transition-shadow duration-300">
+              <div key={idx} className="group relative rounded-[2rem] overflow-hidden border border-border bg-card p-2 flex flex-col h-full hover:shadow-2xl transition-all duration-500">
                 <Link href={`/offerings/${offering.slug}`} className="block absolute inset-0 z-10">
                   <span className="sr-only">View {offering.title}</span>
                 </Link>
-                <div className="aspect-[4/3] bg-muted rounded-2xl mb-6 relative overflow-hidden">
+                <div className="aspect-[4/3] bg-muted rounded-[1.5rem] mb-6 relative overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={offering.image} alt={offering.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
                 </div>
@@ -151,7 +144,7 @@ export default function HomePage() {
                     <span>{offering.type}</span>
                   </div>
                   <Button asChild className="w-full rounded-full relative z-20">
-                    <Link href="/book">View Schedule</Link>
+                    <Link href={`/book/${offering.slug}`}>View Schedule</Link>
                   </Button>
                 </div>
               </div>
@@ -160,18 +153,76 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FINAL CTA */}
-      <section className="py-32 bg-secondary text-secondary-foreground text-center">
-        <div className="container mx-auto px-6 md:px-12 max-w-3xl">
-          <h2 className="text-5xl md:text-6xl font-heading mb-8">Ready to take a breath?</h2>
-          <p className="text-xl font-light mb-12 text-secondary-foreground/80">
-            Join our community and discover the transformative power of your own breath.
-          </p>
-          <Button asChild size="lg" className="rounded-full px-12 py-6 text-lg bg-background text-foreground hover:bg-accent hover:text-accent-foreground">
-            <Link href="/book">Book Your First Session</Link>
+      {/* QUOTE SECTION */}
+      <section className="relative py-32 md:py-48 flex items-center justify-center overflow-hidden">
+        {/* Parallax Background Image */}
+        <div className="absolute inset-0 z-0 bg-black">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img 
+            src="/offerings/quote-bg.png" 
+            alt="Breathwork Quote Background" 
+            className="w-full h-full object-cover opacity-80"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+        </div>
+
+        <div className="container relative z-10 mx-auto px-6 md:px-12">
+          <div className="max-w-3xl">
+            <blockquote className="text-3xl md:text-5xl font-serif italic text-white leading-tight mb-8 drop-shadow-lg">
+              "In this silent breath, I feel the weight of the world fall away, and all that remains is the heartbeat of existence itself"
+            </blockquote>
+            <p className="text-white/80 font-medium tracking-wide text-lg drop-shadow-md">
+              – Ursula K. Le Guin
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* TESTIMONIALS SECTION */}
+      <section className="py-24 bg-[#F9F8F6]">
+        <div className="container mx-auto px-6 md:px-12 text-center">
+          <span className="text-accent uppercase tracking-[0.2em] text-sm font-semibold mb-4 block">
+            testimonials
+          </span>
+          <h2 className="text-4xl md:text-5xl font-heading mb-16 text-primary">
+            Surrender to the Breath. Trust the Process.
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16 text-left">
+            {[
+              {
+                quote: "Rosalind creates such a safe, nurturing space. I always leave feeling clearer, lighter and deeply connected.",
+                author: "Emma R."
+              },
+              {
+                quote: "The 1:1 session completely shifted my perspective. I was able to release tension I didn't even know I was holding onto.",
+                author: "James T."
+              },
+              {
+                quote: "I've tried meditation for years, but nothing allowed me to drop into my body as quickly as this breathwork journey.",
+                author: "Sarah L."
+              }
+            ].map((testimony, idx) => (
+              <div key={idx} className="bg-white p-10 rounded-[2rem] shadow-sm border border-border/40 hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-1 text-[#EBCBBA] mb-6">
+                    {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 fill-current" />)}
+                  </div>
+                  <p className="text-lg font-light text-primary leading-relaxed mb-8 italic">
+                    "{testimony.quote}"
+                  </p>
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">— {testimony.author}</p>
+              </div>
+            ))}
+          </div>
+
+          <Button asChild variant="outline" size="lg" className="rounded-full px-8 py-6 text-lg border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+            <Link href="/testimonials">All testimonials</Link>
           </Button>
         </div>
       </section>
+
     </div>
   )
 }

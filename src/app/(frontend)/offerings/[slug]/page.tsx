@@ -211,6 +211,19 @@ export default async function OfferingDetailPage({ params }: { params: Promise<{
         </div>
       </section>
 
+      {/* Mobile Prominent CTA */}
+      <div className="xl:hidden container mx-auto px-6 pb-12">
+        <div className="bg-white rounded-3xl p-6 shadow-lg border border-border flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div>
+            <h3 className="text-xl font-medium text-primary">Ready to begin?</h3>
+            <p className="text-sm text-muted-foreground">Members book for free.</p>
+          </div>
+          <Button asChild className="w-full sm:w-auto rounded-full py-6 px-8 shadow-md font-medium text-base">
+            <Link href={`/book/${slug}`}>Choose Date & Time</Link>
+          </Button>
+        </div>
+      </div>
+
       {/* Meta Bar */}
       <div className="bg-white border-y border-border/60">
         <div className="container mx-auto px-6 py-6 flex flex-wrap items-center justify-between gap-6">
@@ -297,27 +310,10 @@ export default async function OfferingDetailPage({ params }: { params: Promise<{
 
           {/* Right Column - Sticky Sidebar */}
           <div className="space-y-8 relative">
-            <div className="xl:sticky xl:top-32 space-y-12 pb-24">
-              {/* Quote Image Card */}
-              <div className="relative rounded-[2rem] overflow-hidden bg-muted aspect-[4/5] shadow-lg group">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
-                  src={data.sidebarImage || `/Breathe Write _ Wellness & Breathwork_files/${slug}-sidebar.jpg`} 
-                  alt="Session preview" 
-                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 ease-out" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                <div className="absolute bottom-6 left-6 right-6 bg-white/95 backdrop-blur-xl rounded-2xl p-8 shadow-xl transform transition-transform duration-500">
-                  <span className="text-6xl text-[#EBCBBA] font-serif leading-none absolute -top-6 left-6">"</span>
-                  <p className="text-xl font-heading text-primary leading-snug mt-4 relative z-10 italic">
-                    The breath is the bridge between your body and your mind.
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-4 font-medium">— Rosalind</p>
-                </div>
-              </div>
-
-              {/* Pricing Card */}
-              <div className="bg-white rounded-[2rem] p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-border/40 hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-all duration-500">
+            <div className="xl:sticky xl:top-32 space-y-12 pb-24 flex flex-col">
+              
+              {/* Pricing Card - MOVED TO TOP FOR CRO */}
+              <div className="bg-white rounded-[2rem] p-10 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-[#EBCBBA]/30 hover:shadow-[0_8px_40px_rgb(0,0,0,0.12)] transition-all duration-500 order-1">
                 <div className="space-y-2 mb-10">
                   <h3 className="text-xl font-medium text-muted-foreground font-heading">Price</h3>
                   <div className="flex items-baseline gap-3">
@@ -350,7 +346,7 @@ export default async function OfferingDetailPage({ params }: { params: Promise<{
                   ))}
                 </ul>
 
-                <Link href="/membership" className="block bg-[#F9F8F6] rounded-2xl p-6 group cursor-pointer hover:bg-muted transition-colors border border-transparent hover:border-border/50">
+                <Link href="/membership" className="block bg-[#F9F8F6] rounded-2xl p-6 group cursor-pointer hover:bg-muted transition-colors border border-transparent hover:border-[#EBCBBA]/50">
                   <h4 className="font-heading text-lg mb-2 text-primary">Members go free</h4>
                   <p className="text-[15px] text-muted-foreground font-light mb-4 leading-relaxed">Unlimited access to all group sessions and exclusive content.</p>
                   <div className="text-sm font-medium text-primary flex items-center gap-2 group-hover:gap-4 transition-all">
@@ -365,6 +361,25 @@ export default async function OfferingDetailPage({ params }: { params: Promise<{
                   </p>
                 </div>
               </div>
+
+              {/* Quote Image Card - MOVED BELOW */}
+              <div className="relative rounded-[2rem] overflow-hidden bg-muted aspect-[4/5] shadow-lg group order-2 mt-8">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={data.sidebarImage || `/Breathe Write _ Wellness & Breathwork_files/${slug}-sidebar.jpg`} 
+                  alt="Session preview" 
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 ease-out" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                <div className="absolute bottom-6 left-6 right-6 bg-white/95 backdrop-blur-xl rounded-2xl p-8 shadow-xl transform transition-transform duration-500">
+                  <span className="text-6xl text-[#EBCBBA] font-serif leading-none absolute -top-6 left-6">"</span>
+                  <p className="text-xl font-heading text-primary leading-snug mt-4 relative z-10 italic">
+                    The breath is the bridge between your body and your mind.
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-4 font-medium">— Rosalind</p>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
