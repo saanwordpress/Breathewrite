@@ -35,7 +35,7 @@ export function FeaturedTestimonial({ quote, name, role }: FeaturedTestimonialPr
             ))}
           </div>
 
-          <blockquote className="text-2xl md:text-4xl font-heading text-center leading-relaxed text-foreground/90 mb-10">
+          <blockquote className="text-2xl md:text-4xl font-heading font-normal text-center leading-relaxed text-foreground/90 mb-10">
             &quot;{quote}&quot;
           </blockquote>
 

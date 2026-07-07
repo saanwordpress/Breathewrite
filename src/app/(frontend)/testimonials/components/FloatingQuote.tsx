@@ -28,7 +28,7 @@ export function FloatingQuote({ quote, author, role }: FloatingQuoteProps) {
             <Quote className="w-24 h-24 md:w-32 md:h-32" strokeWidth={1} fill="currentColor" />
           </div>
 
-          <h2 className="text-3xl md:text-5xl lg:text-6xl font-heading text-primary leading-relaxed md:leading-snug relative z-10 font-light px-4 md:px-0">
+          <h2 className="text-3xl md:text-5xl lg:text-6xl font-heading text-primary leading-relaxed md:leading-snug relative z-10 font-normal px-4 md:px-0">
             &quot;{quote}&quot;
           </h2>
           

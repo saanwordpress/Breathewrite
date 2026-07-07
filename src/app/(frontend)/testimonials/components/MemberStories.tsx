@@ -53,7 +53,7 @@ export function MemberStories() {
                 <span className="inline-block px-3 py-1 bg-secondary/10 text-secondary text-xs font-medium uppercase tracking-widest rounded-full mb-6">
                   Member for {story.months}
                 </span>
-                <p className="text-foreground/80 font-light text-lg leading-relaxed relative z-10">
+                <p className="text-foreground/80 font-heading font-normal text-lg leading-relaxed relative z-10">
                   &quot;{story.quote}&quot;
                 </p>
               </div>
