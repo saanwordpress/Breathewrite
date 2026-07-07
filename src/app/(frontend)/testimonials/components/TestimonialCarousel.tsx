@@ -59,7 +59,7 @@ export function TestimonialCarousel({ testimonials }: TestimonialCarouselProps) 
                 ))}
               </div>
               
-              <p className="text-foreground/80 font-heading font-normal text-[15px] leading-relaxed mb-8 line-clamp-4 flex-grow">
+              <p className="text-foreground/80 font-quote italic text-[17px] leading-relaxed mb-8 line-clamp-4 flex-grow">
                 &quot;{testimonial.quote}&quot;
               </p>
 
@@ -83,7 +83,7 @@ export function TestimonialCarousel({ testimonials }: TestimonialCarouselProps) 
                       <DialogTitle className="text-2xl font-heading text-primary">{testimonial.name}</DialogTitle>
                       {testimonial.role && <DialogDescription className="uppercase tracking-widest text-xs mt-1">{testimonial.role}</DialogDescription>}
                     </DialogHeader>
-                    <div className="font-heading font-normal text-foreground/90 text-lg leading-loose space-y-4">
+                    <div className="font-quote italic text-foreground/90 text-2xl leading-loose space-y-4">
                       <p>&quot;{testimonial.quote}&quot;</p>
                     </div>
                   </DialogContent>
