@@ -62,7 +62,7 @@ export default function TestimonialsPage() {
             <Button asChild size="lg" className="rounded-full px-12 py-6 text-lg bg-background text-foreground hover:bg-accent hover:text-accent-foreground shadow-xl">
               <Link href="/calendar">Book Your First Session</Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="rounded-full px-12 py-6 text-lg border-secondary-foreground/20 hover:bg-secondary-foreground hover:text-secondary">
+            <Button asChild variant="outline" size="lg" className="rounded-full px-12 py-6 text-lg bg-transparent border-secondary-foreground/50 text-secondary-foreground hover:bg-secondary-foreground hover:text-secondary">
               <Link href="/membership">Explore Membership</Link>
             </Button>
           </div>

@@ -73,7 +73,7 @@ export function TestimonialCarousel({ testimonials }: TestimonialCarouselProps) 
                   <DialogTrigger render={<Button variant="ghost" size="icon" className="rounded-full hover:bg-secondary/10 hover:text-secondary group" />}>
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl p-8 md:p-12">
+                  <DialogContent className="sm:max-w-2xl md:max-w-3xl p-8 md:p-12">
                     <DialogHeader className="mb-8">
                       <div className="flex gap-1 mb-4">
                         {[1, 2, 3, 4, 5].map((star) => (
