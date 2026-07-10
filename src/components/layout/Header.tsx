@@ -76,8 +76,8 @@ export function Header() {
           <Link href="/login" className="text-sm font-medium text-primary hover:text-accent transition-colors">
             Login
           </Link>
-          <Link href="/book" className={buttonVariants({ className: "rounded-full px-6 py-5 text-sm tracking-wide" })}>
-            Book Session
+          <Link href="/calendar" className={buttonVariants({ className: "rounded-full px-6 py-5 text-sm tracking-wide" })}>
+            Book Now
           </Link>
         </div>
 
@@ -127,8 +127,8 @@ export function Header() {
               <Link href="/login" className="text-xl font-heading text-secondary">
                 Login
               </Link>
-              <Link href="/book" className={buttonVariants({ className: "rounded-full w-full py-6 text-lg mt-4" })}>
-                Book Session
+              <Link href="/calendar" className={buttonVariants({ className: "rounded-full w-full py-6 text-lg mt-4" })}>
+                Book Now
               </Link>
             </nav>
           </motion.div>

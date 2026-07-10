@@ -42,17 +42,18 @@ export function TestimonialCarousel({ testimonials }: TestimonialCarouselProps) 
         <p className="text-foreground/60 font-light">Swipe to explore experiences from our community.</p>
       </div>
 
-      <div className="relative z-10 w-full overflow-x-auto pb-12 snap-x snap-mandatory hide-scrollbar pl-6 md:pl-12 lg:pl-[max(3rem,calc((100vw-80rem)/2))]">
-        <div className="flex gap-6 w-max pr-6 md:pr-12">
-          {testimonials.map((testimonial, idx) => (
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6, delay: idx * 0.1, ease: "easeOut" }}
-              key={idx}
-              className="snap-start shrink-0 w-[85vw] md:w-[400px] lg:w-[450px] bg-card rounded-3xl p-8 border border-border/50 shadow-sm hover:shadow-md transition-shadow flex flex-col"
-            >
+      <div className="relative z-10 w-full overflow-hidden pb-12">
+        <div 
+          className="flex w-max animate-marquee"
+          style={{ animationDuration: `${Math.max(testimonials.length * 12, 10)}s` }}
+        >
+          {[0, 1, 2, 3, 4, 5].map((setIndex) => (
+            <div key={setIndex} className="flex gap-6 pr-6" aria-hidden={setIndex !== 0}>
+              {testimonials.map((testimonial, idx) => (
+                <div
+                  key={`${setIndex}-${idx}`}
+                  className="shrink-0 w-[85vw] md:w-[400px] lg:w-[450px] bg-card rounded-3xl p-8 border border-border/50 shadow-sm hover:shadow-md transition-shadow flex flex-col"
+                >
               <div className="flex gap-1 mb-6">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star key={star} className="w-4 h-4 fill-accent text-accent" />
@@ -89,7 +90,9 @@ export function TestimonialCarousel({ testimonials }: TestimonialCarouselProps) 
                   </DialogContent>
                 </Dialog>
               </div>
-            </motion.div>
+                  </div>
+              ))}
+            </div>
           ))}
         </div>
       </div>
@@ -100,6 +103,16 @@ export function TestimonialCarousel({ testimonials }: TestimonialCarouselProps) 
         .hide-scrollbar {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(calc(-100% / 6)); }
+        }
+        .animate-marquee {
+          animation: marquee 40s linear infinite;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
         }
       `}</style>
     </section>
