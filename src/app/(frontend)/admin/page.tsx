@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Users, DollarSign, Calendar as CalendarIcon, Settings } from 'lucide-react'
 import { getEvents } from "@/lib/mock-db"
+import { NotificationFeed } from './components/NotificationFeed'
 
 // Dummy Data for static stats
 const STATS = [
@@ -114,6 +115,11 @@ export default async function AdminDashboardPage() {
                  <DollarSign className="w-5 h-5 text-muted-foreground" />
                  <span>Stripe Dashboard</span>
                </a>
+             </div>
+             
+             {/* Notifications */}
+             <div className="pt-4">
+               <NotificationFeed />
              </div>
           </div>
         </div>

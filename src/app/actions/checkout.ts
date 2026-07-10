@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth"
 import { stripe } from "@/lib/stripe"
-// import { prisma } from "@/auth" 
+import { prisma } from "@/lib/availability" 
 import { redirect } from "next/navigation"
 
 export async function createCheckoutSession(slug: string, dateStr: string, timeStr: string, durationMins: number, price: number, wantsMembership: boolean) {
@@ -25,7 +25,6 @@ export async function createCheckoutSession(slug: string, dateStr: string, timeS
 
   if (isMember && !wantsMembership) {
     // Members book for free
-    /*
     await prisma.booking.create({
       data: {
         userId,
@@ -36,7 +35,12 @@ export async function createCheckoutSession(slug: string, dateStr: string, timeS
         status: 'CONFIRMED',
       }
     })
-    */
+
+    await prisma.notification.create({
+      data: {
+        message: `Member ${session.user.name || session.user.email} booked a class: ${slug} on ${dateStr} at ${timeStr}.`
+      }
+    })
     
     redirect('/dashboard?booking=success')
   }
