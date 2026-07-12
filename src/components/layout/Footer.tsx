@@ -115,7 +115,7 @@ export function Footer() {
       
       <div className="relative container mx-auto px-6 md:px-12 mt-4 pb-12 text-center md:text-left md:flex md:justify-between md:items-center text-primary-foreground/40 text-sm font-light z-10">
         <p>© {new Date().getFullYear()} Breathe Write. All rights reserved.</p>
-        <p className="mt-2 md:mt-0">Designed with intention.</p>
+        <p className="mt-2 md:mt-0">Designed and developed by Sanan Khan</p>
       </div>
     </footer>
   )
