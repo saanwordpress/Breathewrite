@@ -1,9 +1,6 @@
 import { redirect } from 'next/navigation'
-import { auth } from '@/auth'
 import { getCalendarEventById } from '@/app/actions/calendar'
-import { findUserBookingForEvent, getMembership } from '@/lib/bookings'
-import { membershipCoversClass } from '@/lib/membership'
-import { isClassPast, ukDateTimeToUtc } from '@/lib/time'
+import { isClassPast } from '@/lib/time'
 import { activeMeetingProvider } from '@/lib/meetings'
 import { BookingWizard } from './BookingWizard'
 
@@ -20,16 +17,10 @@ export default async function BookPage({
 
   if (!eventId && !wantsMembership) redirect('/calendar')
 
-  const session = await auth()
-  const userId = session?.user?.id ?? null
-
   const found = eventId ? await getCalendarEventById(eventId) : null
   const event = found && found.isPublished
     ? { id: found.id, title: found.title, date: found.date, startTime: found.startTime, endTime: found.endTime, price: found.price }
     : null
-
-  const membership = userId ? await getMembership(userId) : { active: false, expiresAt: null }
-  const alreadyBooked = !!(userId && event && (await findUserBookingForEvent(userId, event.id)))
 
   return (
     <div className="flex flex-col w-full bg-background min-h-screen pt-24 pb-24">
@@ -39,7 +30,7 @@ export default async function BookPage({
             {wantsMembership && !event ? 'Become a Member' : 'Book a Session'}
           </h1>
           <p className="text-foreground/70 font-light">
-            Review your details below to secure your spot.
+            Enter your details below to secure your spot. No account needed.
           </p>
         </div>
 
@@ -47,11 +38,7 @@ export default async function BookPage({
           eventId={eventId}
           event={event}
           membershipOnly={wantsMembership && !eventId}
-          isLoggedIn={!!userId}
-          membership={membership}
           isPast={event ? isClassPast(event.date, event.startTime) : false}
-          alreadyBooked={alreadyBooked}
-          coveredByMembership={!!event && membershipCoversClass(membership, ukDateTimeToUtc(event.date, event.startTime))}
           canceled={sp.canceled === 'true'}
           meetingLabel={activeMeetingProvider() === 'zoom' ? 'Zoom' : 'Google Meet'}
         />

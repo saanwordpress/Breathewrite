@@ -194,15 +194,21 @@ export async function endMembershipForSubscription(subscriptionId: string) {
   if (userId) await updateMember(userId, { isMember: false, subscriptionId: null })
 }
 
-// Fallback for when the success redirect lands before (or without) the webhook.
-export async function confirmCheckoutForUser(sessionId: string, userId: string) {
-  if (!isStripeConfigured() || !sessionId.startsWith('cs_')) return
+// Runs on the success page too, in case the customer returns before (or without) the webhook.
+export async function confirmCheckoutSession(sessionId: string): Promise<{ type: string; booking: BookingRecord | null; email: string } | null> {
+  if (!isStripeConfigured() || !sessionId.startsWith('cs_')) return null
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId)
-    if (session.metadata?.userId !== userId) return
     await fulfillStripeCheckoutSession(session)
+    const paid = session.payment_status === 'paid' || session.payment_status === 'no_payment_required'
+    return {
+      type: paid ? session.metadata?.type ?? 'booking' : 'unpaid',
+      booking: await findBookingByStripeSession(session.id),
+      email: session.metadata?.customerEmail || session.customer_details?.email || '',
+    }
   } catch (err) {
     console.error('[CHECKOUT] Could not confirm session on return:', err)
+    return null
   }
 }
 

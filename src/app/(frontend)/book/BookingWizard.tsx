@@ -3,9 +3,9 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Check, Loader2, Sparkles, Video, AlertCircle } from 'lucide-react'
+import { Check, Loader2, Video, AlertCircle, Sparkles } from 'lucide-react'
 import { createCheckoutSession } from '@/app/actions/checkout'
-import { MEMBERSHIP_PRICE_GBP, type MembershipStatus } from '@/lib/membership'
+import { MEMBERSHIP_PRICE_GBP } from '@/lib/membership'
 import { formatLongDate, formatTime12h, minutesBetween } from '@/lib/time'
 
 type BookingEvent = {
@@ -21,14 +21,12 @@ type Props = {
   eventId: string | null
   event: BookingEvent | null
   membershipOnly: boolean
-  isLoggedIn: boolean
-  membership: MembershipStatus
   isPast: boolean
-  alreadyBooked: boolean
-  coveredByMembership: boolean
   canceled: boolean
   meetingLabel: string
 }
+
+const input = 'px-4 py-3 rounded-full border border-border bg-background focus:outline-none focus:ring-2 focus:ring-accent w-full font-light'
 
 function Notice({ title, body, href, cta }: { title: string; body: string; href: string; cta: string }) {
   return (
@@ -51,23 +49,12 @@ function Row({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function BookingWizard({
-  eventId,
-  event,
-  membershipOnly,
-  isLoggedIn,
-  membership,
-  isPast,
-  alreadyBooked,
-  coveredByMembership,
-  canceled,
-  meetingLabel,
-}: Props) {
+export function BookingWizard({ eventId, event, membershipOnly, isPast, canceled, meetingLabel }: Props) {
   const [addMembership, setAddMembership] = useState(membershipOnly)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-
-  const memberUntil = membership.expiresAt ? formatLongDate(membership.expiresAt.slice(0, 10)) : null
 
   if (eventId && !event) {
     return <Notice title="Class not found" body="This class is no longer available. Please pick another date from the calendar." href="/calendar" cta="Back to Calendar" />
@@ -75,35 +62,21 @@ export function BookingWizard({
   if (event && isPast) {
     return <Notice title="This class has already taken place" body="Past classes can't be booked. Take a look at the upcoming dates instead." href="/calendar" cta="See Upcoming Classes" />
   }
-  if (event && alreadyBooked) {
-    return <Notice title="You're already booked" body="Your joining link is in your confirmation email and on your dashboard." href="/dashboard" cta="Go to My Dashboard" />
-  }
-  if (membershipOnly && membership.active) {
-    return <Notice title="You're already a member" body={`Your membership is active${memberUntil ? ` until ${memberUntil}` : ''}. Pick any class on the calendar to reserve your spot at no charge.`} href="/calendar" cta="Browse Classes" />
-  }
 
   const payingForMembership = membershipOnly || addMembership
-  const isFreeForMember = !!event && coveredByMembership && !addMembership
 
-  const handleCheckout = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
     setError(null)
     startTransition(async () => {
-      const result = await createCheckoutSession(event?.id ?? null, payingForMembership)
+      const result = await createCheckoutSession(event?.id ?? null, payingForMembership, { name, email })
       if (result?.error) setError(result.error)
     })
   }
 
-  const buttonLabel = !isLoggedIn
-    ? 'Sign in to Continue'
-    : isFreeForMember
-    ? 'Reserve My Spot (£0)'
-    : payingForMembership
-    ? `Checkout (£${MEMBERSHIP_PRICE_GBP}/month)`
-    : `Checkout (£${event!.price.toFixed(2)})`
-
   return (
-    <div className="bg-card border border-border rounded-3xl p-6 md:p-10 shadow-xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <h2 className="text-2xl font-heading">Review & {isFreeForMember ? 'Reserve' : 'Checkout'}</h2>
+    <form onSubmit={handleSubmit} className="bg-card border border-border rounded-3xl p-6 md:p-10 shadow-xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <h2 className="text-2xl font-heading">Review & Checkout</h2>
 
       {canceled && (
         <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
@@ -120,38 +93,12 @@ export function BookingWizard({
           <Row label="Time (UK)" value={`${formatTime12h(event.startTime)} – ${formatTime12h(event.endTime)}`} />
           <Row label="Duration" value={`${minutesBetween(event.startTime, event.endTime)} minutes`} />
           <div className="flex items-center gap-2 text-sm text-muted-foreground font-light">
-            <Video className="w-4 h-4" /> Live on {meetingLabel}. Your joining link is emailed as soon as you book.
+            <Video className="w-4 h-4 shrink-0" /> Live on {meetingLabel}. Your joining link is emailed to you as soon as you book.
           </div>
           <div className="border-t border-border pt-4 flex justify-between font-medium">
             <span>Total</span>
-            {isFreeForMember ? (
-              <span className="flex items-center gap-2">
-                <span className="line-through text-muted-foreground font-light">£{event.price.toFixed(2)}</span>
-                £0.00
-              </span>
-            ) : payingForMembership ? (
-              <span>£{MEMBERSHIP_PRICE_GBP}.00 / month</span>
-            ) : (
-              <span>£{event.price.toFixed(2)}</span>
-            )}
+            <span>{payingForMembership ? `£${MEMBERSHIP_PRICE_GBP}.00 / month` : `£${event.price.toFixed(2)}`}</span>
           </div>
-        </div>
-      )}
-
-      {isFreeForMember && (
-        <div className="flex items-start gap-3 rounded-2xl border border-[#5B8260]/40 bg-[#5B8260]/10 p-5 text-sm">
-          <Sparkles className="w-5 h-5 shrink-0 text-[#5B8260]" />
-          <span>
-            <strong>Included in your membership.</strong> No payment needed
-            {memberUntil ? `. Your membership covers classes until ${memberUntil}.` : '.'}
-          </span>
-        </div>
-      )}
-
-      {event && membership.active && !coveredByMembership && memberUntil && (
-        <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/30 p-5 text-sm">
-          <AlertCircle className="w-5 h-5 shrink-0 text-muted-foreground" />
-          <span>This class is after your current membership period (ends {memberUntil}), so it isn&rsquo;t included yet. Once your membership renews it will be free to book.</span>
         </div>
       )}
 
@@ -168,7 +115,28 @@ export function BookingWizard({
         </div>
       )}
 
-      {event && !membership.active && (
+      <div className="space-y-4">
+        <h3 className="font-medium text-lg">Your Details</h3>
+        <label className="block text-sm font-medium">
+          Full name
+          <input value={name} onChange={e => setName(e.target.value)} required maxLength={100} autoComplete="name" className={`${input} mt-2`} />
+        </label>
+        <label className="block text-sm font-medium">
+          Email address
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" className={`${input} mt-2`} />
+          <span className="block mt-2 text-xs font-light text-muted-foreground">
+            {membershipOnly ? 'Use this email whenever you book so your membership is recognised.' : `Your ${meetingLabel} link will be sent here.`}
+          </span>
+        </label>
+        {event && (
+          <p className="flex items-start gap-2 text-xs text-muted-foreground font-light">
+            <Sparkles className="w-4 h-4 shrink-0 text-[#5B8260]" />
+            Already a member? Enter the email you joined with — the class is included and you won&rsquo;t be charged.
+          </p>
+        )}
+      </div>
+
+      {event && (
         <button
           type="button"
           onClick={() => setAddMembership(!addMembership)}
@@ -195,17 +163,17 @@ export function BookingWizard({
       )}
 
       <div>
-        <Button className="w-full rounded-full py-6 text-lg" onClick={handleCheckout} disabled={isPending}>
+        <Button type="submit" className="w-full rounded-full py-6 text-lg" disabled={isPending}>
           {isPending ? (
             <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Processing...</>
+          ) : payingForMembership ? (
+            `Continue to Payment (£${MEMBERSHIP_PRICE_GBP}/month)`
           ) : (
-            buttonLabel
+            `Continue to Payment (£${event!.price.toFixed(2)})`
           )}
         </Button>
-        {!isFreeForMember && (
-          <p className="text-center mt-4 text-sm font-light text-muted-foreground">Secure checkout via Stripe</p>
-        )}
+        <p className="text-center mt-4 text-sm font-light text-muted-foreground">Secure checkout via Stripe</p>
       </div>
-    </div>
+    </form>
   )
 }

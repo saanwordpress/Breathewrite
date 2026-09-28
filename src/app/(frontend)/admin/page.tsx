@@ -6,6 +6,7 @@ import { Users, DollarSign, Calendar as CalendarIcon, Settings, Tag } from 'luci
 import { getEvents } from "@/lib/mock-db"
 import { NotificationFeed } from './components/NotificationFeed'
 import { SetupStatus } from './components/SetupStatus'
+import { prisma } from "@/lib/prisma"
 
 // Dummy Data for static stats
 const STATS = [
@@ -20,6 +21,8 @@ export default async function AdminDashboardPage({
 }) {
   const sp = await searchParams
   const session = await auth()
+  const mustChangePassword = !!(prisma && session?.user?.id &&
+    (await prisma.user.findUnique({ where: { id: session.user.id }, select: { mustChangePassword: true } }))?.mustChangePassword)
   const events = await getEvents()
   const upcomingEventsCount = events.filter(e => e.status !== 'PAST').length
 
@@ -40,6 +43,9 @@ export default async function AdminDashboardPage({
           </div>
           <div className="flex gap-4">
             <Button asChild variant="outline" className="rounded-full border-border">
+              <Link href="/admin/settings">Settings</Link>
+            </Button>
+            <Button asChild variant="outline" className="rounded-full border-border">
               <Link href="/admin/pricing">Manage Pricing</Link>
             </Button>
             <Button asChild className="rounded-full">
@@ -47,6 +53,13 @@ export default async function AdminDashboardPage({
             </Button>
           </div>
         </div>
+
+        {mustChangePassword && (
+          <div className="mb-8 rounded-2xl border border-accent bg-accent/10 p-4 text-sm flex items-center justify-between gap-4">
+            <span>You&rsquo;re using a temporary password. Please change it.</span>
+            <Button asChild size="sm" className="rounded-full"><Link href="/admin/settings">Change password</Link></Button>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
@@ -121,6 +134,10 @@ export default async function AdminDashboardPage({
                <Link href="/admin/pricing" className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors">
                  <Tag className="w-5 h-5 text-muted-foreground" />
                  <span>Class Pricing</span>
+               </Link>
+               <Link href="/admin/settings" className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors">
+                 <Settings className="w-5 h-5 text-muted-foreground" />
+                 <span>Settings &amp; Password</span>
                </Link>
                <a href="https://dashboard.stripe.com" target="_blank" rel="noreferrer" className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors">
                  <DollarSign className="w-5 h-5 text-muted-foreground" />

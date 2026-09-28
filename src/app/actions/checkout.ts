@@ -1,6 +1,5 @@
 'use server'
 
-import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { appBaseUrl } from "@/lib/url"
 import { stripe } from "@/lib/stripe"
@@ -13,54 +12,55 @@ import {
   isStripeConfigured,
   oneMonthFromNow,
 } from "@/lib/bookings"
+import { upsertCustomer } from "@/lib/store"
 import { MEMBERSHIP_PRICE_GBP, membershipCoversClass } from "@/lib/membership"
 import { isClassPast, ukDateTimeToUtc, formatLongDate, formatTime12h } from "@/lib/time"
 
 export type CheckoutResult = { error: string } | undefined
 
-// eventId: the calendar class being booked (optional only when buying membership on its own).
-export async function createCheckoutSession(eventId: string | null, wantsMembership: boolean): Promise<CheckoutResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
-    const back = eventId ? `/book?eventId=${eventId}` : '/book?membership=true'
-    redirect(`/login?callbackUrl=${encodeURIComponent(back)}`)
-  }
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-  const userId = session.user.id
-  const customerEmail = session.user.email || ''
-  const customerName = session.user.name || customerEmail.split('@')[0] || 'Valued Customer'
-
+// eventId: the calendar class being booked (null only when buying membership on its own).
+export async function createCheckoutSession(
+  eventId: string | null,
+  wantsMembership: boolean,
+  customer: { name: string; email: string }
+): Promise<CheckoutResult> {
+  const customerName = String(customer?.name ?? '').trim().slice(0, 100)
+  const customerEmail = String(customer?.email ?? '').trim().toLowerCase()
+  if (!customerName) return { error: 'Please enter your name.' }
+  if (!EMAIL_RE.test(customerEmail) || customerEmail.length > 254) return { error: 'Please enter a valid email address.' }
   if (!eventId && !wantsMembership) return { error: 'Please choose a class from the calendar.' }
 
   const event = eventId ? await getCalendarEventById(eventId) : null
   if (eventId) {
     if (!event || !event.isPublished) return { error: 'This class is no longer available.' }
     if (isClassPast(event.date, event.startTime)) return { error: 'This class has already started and can no longer be booked.' }
-    if (await findUserBookingForEvent(userId, event.id)) redirect('/dashboard?booking=exists')
+  }
+
+  const userId = await upsertCustomer(customerEmail, customerName)
+
+  if (event) {
+    const existing = await findUserBookingForEvent(userId, event.id)
+    if (existing) redirect(`/book/confirmed?b=${existing.id}&existing=1`)
   }
 
   const membership = await getMembership(userId)
 
-  // Active members book any class inside their membership period for free.
+  // Members book any class inside their membership period for free. The link is only emailed,
+  // so typing someone else's email doesn't reveal their meeting link.
   if (event && !wantsMembership && membershipCoversClass(membership, ukDateTimeToUtc(event.date, event.startTime))) {
-    await fulfillBooking({
-      userId,
-      customerEmail,
-      customerName,
-      event,
-      pricePaid: 0,
-      paymentLabel: 'Monthly membership (no charge)',
-    })
-    redirect('/dashboard?booking=success')
+    const booking = await fulfillBooking({ userId, customerEmail, customerName, event, pricePaid: 0, paymentLabel: 'Monthly membership (no charge)' })
+    redirect(`/book/confirmed?b=${booking.id}`)
   }
 
   if (event && !wantsMembership && event.price <= 0) {
-    await fulfillBooking({ userId, customerEmail, customerName, event, pricePaid: 0, paymentLabel: 'Free class' })
-    redirect('/dashboard?booking=success')
+    const booking = await fulfillBooking({ userId, customerEmail, customerName, event, pricePaid: 0, paymentLabel: 'Free class' })
+    redirect(`/book/confirmed?b=${booking.id}`)
   }
 
   if (wantsMembership && membership.active && !event) {
-    redirect('/dashboard?membership=active')
+    redirect('/book/confirmed?membership=active')
   }
 
   if (!isStripeConfigured()) {
@@ -72,14 +72,12 @@ export async function createCheckoutSession(eventId: string | null, wantsMembers
     console.warn('[STRIPE DEV] No Stripe key configured — simulating a successful payment.')
     if (wantsMembership) {
       await activateMembership(userId, oneMonthFromNow())
-      if (event) {
-        await fulfillBooking({ userId, customerEmail, customerName, event, pricePaid: 0, paymentLabel: 'Included with new monthly membership (simulated payment)' })
-        redirect('/dashboard?booking=success&membership=success')
-      }
-      redirect('/dashboard?membership=success')
+      if (!event) redirect('/book/confirmed?membership=new')
+      const booking = await fulfillBooking({ userId, customerEmail, customerName, event, pricePaid: 0, paymentLabel: 'Included with new monthly membership (simulated payment)' })
+      redirect(`/book/confirmed?b=${booking.id}&membership=new`)
     }
-    await fulfillBooking({ userId, customerEmail, customerName, event: event!, pricePaid: event!.price, paymentLabel: `£${event!.price.toFixed(2)} (simulated payment)` })
-    redirect('/dashboard?booking=success')
+    const booking = await fulfillBooking({ userId, customerEmail, customerName, event: event!, pricePaid: event!.price, paymentLabel: `£${event!.price.toFixed(2)} (simulated payment)` })
+    redirect(`/book/confirmed?b=${booking.id}`)
   }
 
   const baseUrl = await appBaseUrl()
@@ -123,11 +121,11 @@ export async function createCheckoutSession(eventId: string | null, wantsMembers
               quantity: 1,
             },
       ],
-      customer_email: customerEmail || undefined,
+      customer_email: customerEmail,
       metadata,
       ...(wantsMembership ? { subscription_data: { metadata: { userId } } } : { payment_intent_data: { metadata } }),
-      success_url: `${baseUrl}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: event ? `${baseUrl}/book?eventId=${event.id}&canceled=true` : `${baseUrl}/membership?canceled=true`,
+      success_url: `${baseUrl}/book/confirmed?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: event ? `${baseUrl}/book?eventId=${event.id}&canceled=true` : `${baseUrl}/book?membership=true&canceled=true`,
     })
     checkoutUrl = stripeSession.url
   } catch (error) {

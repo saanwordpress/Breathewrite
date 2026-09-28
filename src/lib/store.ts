@@ -11,6 +11,7 @@ import {
   jsonSaveIntegration,
   jsonSetEventMeetingIfEmpty,
   jsonUpdateUser,
+  jsonUpsertUserByEmail,
 } from '@/lib/json-db'
 
 // Supabase (via Prisma) when DATABASE_URL is set; the local .data/store.json file otherwise (dev only).
@@ -64,6 +65,20 @@ export type NewBooking = {
 }
 
 // ---------- Users / membership ----------
+
+// Customers have no login; they are identified by the email entered at checkout.
+export async function upsertCustomer(email: string, name: string): Promise<string> {
+  if (prisma) {
+    const u = await prisma.user.upsert({
+      where: { email },
+      create: { email, name },
+      update: {},
+      select: { id: true },
+    })
+    return u.id
+  }
+  return jsonUpsertUserByEmail(email, name)
+}
 
 export async function getMember(userId: string): Promise<MemberRecord | null> {
   if (prisma) {
@@ -156,6 +171,15 @@ function fromJson(b: NonNullable<ReturnType<typeof jsonFindBooking>>): BookingRe
 }
 
 const withEvent = { calendarEvent: { select: { title: true, date: true, startTime: true, endTime: true } } } as const
+
+export async function getBookingById(id: string): Promise<(BookingRecord & { customerEmail: string | null }) | null> {
+  if (prisma) {
+    const b = await prisma.booking.findUnique({ where: { id }, include: withEvent })
+    return b ? { ...fromPrisma(b), customerEmail: b.customerEmail } : null
+  }
+  const b = jsonFindBooking(x => x.id === id)
+  return b ? { ...fromJson(b), customerEmail: b.customerEmail ?? null } : null
+}
 
 export async function findBookingByStripeSession(stripeSessionId: string): Promise<BookingRecord | null> {
   if (prisma) {

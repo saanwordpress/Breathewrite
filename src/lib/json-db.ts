@@ -426,6 +426,16 @@ export function jsonUpdateUser(userId: string, patch: Partial<Omit<UserData, 'id
   return true
 }
 
+export function jsonUpsertUserByEmail(email: string, name: string): string {
+  const db = readDb()
+  const existing = db.users.find(u => u.email === email)
+  if (existing) return existing.id
+  const id = 'usr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
+  db.users.push({ id, email, name, isMember: false, role: 'CUSTOMER', createdAt: new Date().toISOString() })
+  writeDb(db)
+  return id
+}
+
 export function jsonGetUser(userId: string): UserData | null {
   const db = readDb()
   return db.users.find(u => u.id === userId) || null

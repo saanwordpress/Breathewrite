@@ -41,7 +41,10 @@ model User {
   emailVerified DateTime?
   image         String?
   role          Role      @default(CUSTOMER)
-  
+  username      String?   @unique
+  passwordHash  String?
+  mustChangePassword Boolean @default(false)
+
   // Membership
   isMember      Boolean   @default(false)
   membershipExpiresAt DateTime?
