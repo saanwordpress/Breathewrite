@@ -7,6 +7,7 @@ interface BookingConfirmationProps {
   date: string;
   time: string;
   durationMins: number;
+  providerName: string;
   meetLink?: string;
   meetingId?: string;
   passcode?: string;
@@ -18,6 +19,7 @@ export const BookingConfirmationEmail = ({
   date,
   time,
   durationMins,
+  providerName,
   meetLink,
   meetingId,
   passcode,
@@ -42,17 +44,17 @@ export const BookingConfirmationEmail = ({
               <Text style={detailText}><strong>Date:</strong> {date}</Text>
               <Text style={detailText}><strong>Time:</strong> {time} (UK time)</Text>
               <Text style={detailText}><strong>Duration:</strong> {durationMins} minutes</Text>
-              {meetingId && <Text style={detailText}><strong>Zoom Meeting ID:</strong> {meetingId}</Text>}
+              {meetingId && <Text style={detailText}><strong>Meeting ID:</strong> {meetingId}</Text>}
               {passcode && <Text style={detailText}><strong>Passcode:</strong> {passcode}</Text>}
             </div>
 
             {meetLink ? (
               <>
                 <Text style={text}>
-                  Join your session on Zoom using the link below:
+                  Join your session on {providerName} using the link below:
                 </Text>
                 <Link href={meetLink} style={button}>
-                  Join Zoom Session
+                  Join {providerName} Session
                 </Link>
                 <Text style={footerText}>
                   Or copy this link into your browser: <Link href={meetLink}>{meetLink}</Link>
@@ -60,7 +62,7 @@ export const BookingConfirmationEmail = ({
               </>
             ) : (
               <Text style={text}>
-                Your Zoom joining link will be sent to you separately before the session.
+                Your joining link will be sent to you separately before the session.
               </Text>
             )}
 

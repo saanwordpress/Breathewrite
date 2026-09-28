@@ -9,7 +9,20 @@ export type CalendarEventData = {
   endTime: string    // "HH:MM"
   price: number
   isPublished: boolean
+  meetingProvider?: string
+  meetingUrl?: string
+  meetingHostUrl?: string
+  meetingId?: string
+  meetingPassword?: string
+  externalEventId?: string
   createdAt: string
+  updatedAt: string
+}
+
+export type IntegrationData = {
+  provider: string
+  accountEmail?: string | null
+  refreshToken: string
   updatedAt: string
 }
 
@@ -52,9 +65,9 @@ export type BookingData = {
   calendarEventId?: string
   customerEmail?: string
   meetingUrl?: string
-  startUrl?: string
-  zoomMeetingId?: string
-  zoomPassword?: string
+  meetingHostUrl?: string
+  meetingId?: string
+  meetingPassword?: string
   createdAt: string
 }
 
@@ -77,6 +90,7 @@ interface DatabaseSchema {
   overrides: OverrideData[]
   bookings: BookingData[]
   users: UserData[]
+  integrations?: IntegrationData[]
 }
 
 const DB_PATH = path.join(process.cwd(), '.data', 'store.json')
@@ -420,4 +434,34 @@ export function jsonGetUser(userId: string): UserData | null {
 export function jsonFindUserBySubscription(subscriptionId: string): UserData | null {
   const db = readDb()
   return db.users.find(u => u.subscriptionId === subscriptionId) || null
+}
+
+type EventMeetingFields = Pick<CalendarEventData, 'meetingProvider' | 'meetingUrl' | 'meetingHostUrl' | 'meetingId' | 'meetingPassword' | 'externalEventId'>
+
+export function jsonSetEventMeetingIfEmpty(eventId: string, meeting: EventMeetingFields): CalendarEventData | null {
+  const db = readDb()
+  const event = db.calendarEvents.find(e => e.id === eventId)
+  if (!event) return null
+  if (!event.meetingUrl) {
+    Object.assign(event, meeting, { updatedAt: new Date().toISOString() })
+    writeDb(db)
+  }
+  return event
+}
+
+export function jsonGetIntegration(provider: string): IntegrationData | null {
+  return readDb().integrations?.find(i => i.provider === provider) || null
+}
+
+export function jsonSaveIntegration(provider: string, data: { refreshToken: string; accountEmail?: string | null }) {
+  const db = readDb()
+  db.integrations = (db.integrations || []).filter(i => i.provider !== provider)
+  db.integrations.push({ provider, ...data, updatedAt: new Date().toISOString() })
+  writeDb(db)
+}
+
+export function jsonDeleteIntegration(provider: string) {
+  const db = readDb()
+  db.integrations = (db.integrations || []).filter(i => i.provider !== provider)
+  writeDb(db)
 }

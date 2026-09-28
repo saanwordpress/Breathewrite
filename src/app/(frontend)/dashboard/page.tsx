@@ -2,8 +2,10 @@ import { auth, signOut } from "@/auth"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { jsonGetBookings } from "@/lib/json-db"
-import { confirmCheckoutForUser, getMembership } from "@/lib/bookings"
+import { listUserBookings, getMember } from "@/lib/store"
+import { confirmCheckoutForUser, createBillingPortalUrl, getMembership } from "@/lib/bookings"
+import { meetingProviderName } from "@/lib/meetings"
+import { appBaseUrl } from "@/lib/url"
 import { formatLongDate, formatTime12h, isClassPast } from "@/lib/time"
 import { Video, Calendar, Sparkles, CheckCircle2 } from "lucide-react"
 
@@ -20,20 +22,20 @@ export default async function DashboardPage({
     redirect('/login?callbackUrl=%2Fdashboard')
   }
 
-  // @ts-ignore
-  const { id: userId, name, email, role } = session.user
+  const { id: userId, name, email } = session.user
+  const role = (session.user as { role?: string }).role
   const sp = await searchParams
 
   if (userId && typeof sp.session_id === 'string') {
     await confirmCheckoutForUser(sp.session_id, userId)
   }
 
-  const membership = userId ? getMembership(userId) : { active: false, expiresAt: null }
+  const membership = userId ? await getMembership(userId) : { active: false, expiresAt: null }
   const isMember = membership.active
   const memberUntil = membership.expiresAt ? formatLongDate(membership.expiresAt.slice(0, 10)) : null
+  const stripeCustomerId = isMember && userId ? (await getMember(userId))?.stripeCustomerId : null
 
-  const userBookings = (userId ? jsonGetBookings(userId) : [])
-    .filter(b => b.status === 'CONFIRMED')
+  const userBookings = (userId ? await listUserBookings(userId) : [])
     .map(b => ({ ...b, isPast: isClassPast(b.date, b.endTime || b.startTime) }))
     .sort((a, b) =>
       a.isPast !== b.isPast
@@ -43,7 +45,7 @@ export default async function DashboardPage({
 
   const banner =
     sp.booking === 'success' || sp.checkout === 'success'
-      ? 'Your booking is confirmed! Your Zoom joining link has been emailed to you and is shown below.'
+      ? 'Your booking is confirmed! Your joining link has been emailed to you and is shown below.'
       : sp.membership === 'success'
       ? 'Welcome to the membership! You can now book any class on the calendar at no extra charge.'
       : sp.booking === 'exists'
@@ -139,9 +141,9 @@ export default async function DashboardPage({
                         {formatLongDate(booking.date)} · {formatTime12h(booking.startTime)} – {formatTime12h(booking.endTime)} (UK)
                         {booking.pricePaid === 0 ? ' · Membership' : ` · £${booking.pricePaid.toFixed(2)}`}
                       </p>
-                      {booking.zoomMeetingId && !booking.isPast && (
+                      {booking.meetingId && booking.meetingPassword && !booking.isPast && (
                         <p className="text-xs text-muted-foreground font-light mt-1">
-                          Meeting ID {booking.zoomMeetingId}{booking.zoomPassword ? ` · Passcode ${booking.zoomPassword}` : ''}
+                          Meeting ID {booking.meetingId} · Passcode {booking.meetingPassword}
                         </p>
                       )}
                     </div>
@@ -154,7 +156,7 @@ export default async function DashboardPage({
                       <Button asChild size="sm" className="rounded-full bg-[#4A6FA5] hover:bg-[#3B5B88] text-white">
                         <a href={booking.meetingUrl} target="_blank" rel="noreferrer">
                           <Video className="w-4 h-4 mr-2" />
-                          Join Zoom Session
+                          Join {meetingProviderName(booking.meetingUrl)}
                         </a>
                       </Button>
                     ) : (
@@ -181,6 +183,19 @@ export default async function DashboardPage({
                   <Button asChild variant="secondary" className="w-full rounded-full">
                     <Link href="/calendar">Book Class for £0</Link>
                   </Button>
+                  {stripeCustomerId && (
+                    <form
+                      action={async () => {
+                        "use server"
+                        const url = await createBillingPortalUrl(stripeCustomerId, `${await appBaseUrl()}/dashboard`)
+                        redirect(url ?? '/dashboard')
+                      }}
+                    >
+                      <Button type="submit" variant="ghost" className="w-full rounded-full mt-3 text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10">
+                        Manage or cancel membership
+                      </Button>
+                    </form>
+                  )}
                 </>
               ) : (
                 <>

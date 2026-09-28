@@ -1,8 +1,8 @@
 'use server'
 
 import { auth } from "@/auth"
-import { headers } from "next/headers"
 import { redirect } from "next/navigation"
+import { appBaseUrl } from "@/lib/url"
 import { stripe } from "@/lib/stripe"
 import { getCalendarEventById } from "@/app/actions/calendar"
 import {
@@ -17,14 +17,6 @@ import { MEMBERSHIP_PRICE_GBP, membershipCoversClass } from "@/lib/membership"
 import { isClassPast, ukDateTimeToUtc, formatLongDate, formatTime12h } from "@/lib/time"
 
 export type CheckoutResult = { error: string } | undefined
-
-async function appBaseUrl() {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')
-  const h = await headers()
-  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
-  const proto = h.get('x-forwarded-proto') || (host.startsWith('localhost') ? 'http' : 'https')
-  return `${proto}://${host}`
-}
 
 // eventId: the calendar class being booked (optional only when buying membership on its own).
 export async function createCheckoutSession(eventId: string | null, wantsMembership: boolean): Promise<CheckoutResult> {
@@ -44,10 +36,10 @@ export async function createCheckoutSession(eventId: string | null, wantsMembers
   if (eventId) {
     if (!event || !event.isPublished) return { error: 'This class is no longer available.' }
     if (isClassPast(event.date, event.startTime)) return { error: 'This class has already started and can no longer be booked.' }
-    if (findUserBookingForEvent(userId, event.id)) redirect('/dashboard?booking=exists')
+    if (await findUserBookingForEvent(userId, event.id)) redirect('/dashboard?booking=exists')
   }
 
-  const membership = getMembership(userId)
+  const membership = await getMembership(userId)
 
   // Active members book any class inside their membership period for free.
   if (event && !wantsMembership && membershipCoversClass(membership, ukDateTimeToUtc(event.date, event.startTime))) {
@@ -79,7 +71,7 @@ export async function createCheckoutSession(eventId: string | null, wantsMembers
 
     console.warn('[STRIPE DEV] No Stripe key configured — simulating a successful payment.')
     if (wantsMembership) {
-      activateMembership(userId, oneMonthFromNow())
+      await activateMembership(userId, oneMonthFromNow())
       if (event) {
         await fulfillBooking({ userId, customerEmail, customerName, event, pricePaid: 0, paymentLabel: 'Included with new monthly membership (simulated payment)' })
         redirect('/dashboard?booking=success&membership=success')
@@ -124,7 +116,7 @@ export async function createCheckoutSession(eventId: string | null, wantsMembers
                 currency: 'gbp',
                 product_data: {
                   name: event!.title,
-                  description: `${formatLongDate(event!.date)}, ${formatTime12h(event!.startTime)} – ${formatTime12h(event!.endTime)} (UK time) · Live on Zoom`,
+                  description: `${formatLongDate(event!.date)}, ${formatTime12h(event!.startTime)} – ${formatTime12h(event!.endTime)} (UK time) · Live online`,
                 },
                 unit_amount: Math.round(event!.price * 100),
               },

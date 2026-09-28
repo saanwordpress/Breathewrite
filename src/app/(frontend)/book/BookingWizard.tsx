@@ -27,6 +27,7 @@ type Props = {
   alreadyBooked: boolean
   coveredByMembership: boolean
   canceled: boolean
+  meetingLabel: string
 }
 
 function Notice({ title, body, href, cta }: { title: string; body: string; href: string; cta: string }) {
@@ -60,6 +61,7 @@ export function BookingWizard({
   alreadyBooked,
   coveredByMembership,
   canceled,
+  meetingLabel,
 }: Props) {
   const [addMembership, setAddMembership] = useState(membershipOnly)
   const [error, setError] = useState<string | null>(null)
@@ -74,7 +76,7 @@ export function BookingWizard({
     return <Notice title="This class has already taken place" body="Past classes can't be booked. Take a look at the upcoming dates instead." href="/calendar" cta="See Upcoming Classes" />
   }
   if (event && alreadyBooked) {
-    return <Notice title="You're already booked" body="Your Zoom joining link is in your confirmation email and on your dashboard." href="/dashboard" cta="Go to My Dashboard" />
+    return <Notice title="You're already booked" body="Your joining link is in your confirmation email and on your dashboard." href="/dashboard" cta="Go to My Dashboard" />
   }
   if (membershipOnly && membership.active) {
     return <Notice title="You're already a member" body={`Your membership is active${memberUntil ? ` until ${memberUntil}` : ''}. Pick any class on the calendar to reserve your spot at no charge.`} href="/calendar" cta="Browse Classes" />
@@ -118,7 +120,7 @@ export function BookingWizard({
           <Row label="Time (UK)" value={`${formatTime12h(event.startTime)} – ${formatTime12h(event.endTime)}`} />
           <Row label="Duration" value={`${minutesBetween(event.startTime, event.endTime)} minutes`} />
           <div className="flex items-center gap-2 text-sm text-muted-foreground font-light">
-            <Video className="w-4 h-4" /> Live on Zoom. Your joining link is emailed as soon as you book.
+            <Video className="w-4 h-4" /> Live on {meetingLabel}. Your joining link is emailed as soon as you book.
           </div>
           <div className="border-t border-border pt-4 flex justify-between font-medium">
             <span>Total</span>

@@ -4,6 +4,7 @@ import { getCalendarEventById } from '@/app/actions/calendar'
 import { findUserBookingForEvent, getMembership } from '@/lib/bookings'
 import { membershipCoversClass } from '@/lib/membership'
 import { isClassPast, ukDateTimeToUtc } from '@/lib/time'
+import { activeMeetingProvider } from '@/lib/meetings'
 import { BookingWizard } from './BookingWizard'
 
 export const dynamic = 'force-dynamic'
@@ -27,7 +28,8 @@ export default async function BookPage({
     ? { id: found.id, title: found.title, date: found.date, startTime: found.startTime, endTime: found.endTime, price: found.price }
     : null
 
-  const membership = userId ? getMembership(userId) : { active: false, expiresAt: null }
+  const membership = userId ? await getMembership(userId) : { active: false, expiresAt: null }
+  const alreadyBooked = !!(userId && event && (await findUserBookingForEvent(userId, event.id)))
 
   return (
     <div className="flex flex-col w-full bg-background min-h-screen pt-24 pb-24">
@@ -48,9 +50,10 @@ export default async function BookPage({
           isLoggedIn={!!userId}
           membership={membership}
           isPast={event ? isClassPast(event.date, event.startTime) : false}
-          alreadyBooked={!!(userId && event && findUserBookingForEvent(userId, event.id))}
+          alreadyBooked={alreadyBooked}
           coveredByMembership={!!event && membershipCoversClass(membership, ukDateTimeToUtc(event.date, event.startTime))}
           canceled={sp.canceled === 'true'}
+          meetingLabel={activeMeetingProvider() === 'zoom' ? 'Zoom' : 'Google Meet'}
         />
       </div>
     </div>

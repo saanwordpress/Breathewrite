@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Users, DollarSign, Calendar as CalendarIcon, Settings, Tag } from 'lucide-react'
 import { getEvents } from "@/lib/mock-db"
 import { NotificationFeed } from './components/NotificationFeed'
+import { SetupStatus } from './components/SetupStatus'
 
 // Dummy Data for static stats
 const STATS = [
@@ -12,7 +13,12 @@ const STATS = [
   { label: 'Active Members', value: '45', icon: Users },
 ]
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const sp = await searchParams
   const session = await auth()
   const events = await getEvents()
   const upcomingEventsCount = events.filter(e => e.status !== 'PAST').length
@@ -101,6 +107,7 @@ export default async function AdminDashboardPage() {
           </div>
 
           <div className="space-y-8">
+             <SetupStatus googleResult={typeof sp.google === 'string' ? sp.google : undefined} />
              <h2 className="text-2xl font-heading">Quick Actions</h2>
              <div className="bg-card border border-border rounded-3xl p-6 space-y-4">
                <Link href="/admin/members" className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors">

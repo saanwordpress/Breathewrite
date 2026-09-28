@@ -1,19 +1,22 @@
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe'
-import { prisma } from '@/lib/prisma'
-import { createZoomMeeting } from '@/lib/zoom'
 import { sendBookingEmails } from '@/lib/email'
+import { ensureClassMeeting } from '@/lib/meetings'
 import { formatLongDate, formatTime12h, minutesBetween, ukDateTimeToUtc } from '@/lib/time'
 import type { MembershipStatus } from '@/lib/membership'
 import { getCalendarEventById } from '@/app/actions/calendar'
 import {
-  jsonCreateBooking,
-  jsonFindBooking,
-  jsonFindUserBySubscription,
-  jsonGetUser,
-  jsonUpdateUser,
-  type BookingData,
-} from '@/lib/json-db'
+  addAdminNotification,
+  createBooking,
+  findBookingByStripeSession,
+  findMemberIdBySubscription,
+  findUserBookingForEvent,
+  getMember,
+  updateMember,
+  type BookingRecord,
+} from '@/lib/store'
+
+export { findUserBookingForEvent }
 
 export type BookableEvent = NonNullable<Awaited<ReturnType<typeof getCalendarEventById>>>
 
@@ -22,16 +25,12 @@ export function isStripeConfigured(): boolean {
   return key.startsWith('sk_') && !key.includes('dummyKey') && !key.includes('placeholder')
 }
 
-export function getMembership(userId: string): MembershipStatus {
-  const user = jsonGetUser(userId)
+export async function getMembership(userId: string): Promise<MembershipStatus> {
+  const user = await getMember(userId)
   if (!user?.isMember) return { active: false, expiresAt: null }
-  const expiresAt = user.membershipExpiresAt ?? null
+  const expiresAt = user.membershipExpiresAt
   const active = !expiresAt || new Date(expiresAt).getTime() > Date.now()
   return { active, expiresAt }
-}
-
-export function findUserBookingForEvent(userId: string, eventId: string) {
-  return jsonFindBooking(b => b.userId === userId && b.calendarEventId === eventId && b.status === 'CONFIRMED')
 }
 
 export function oneMonthFromNow(): Date {
@@ -40,28 +39,18 @@ export function oneMonthFromNow(): Date {
   return d
 }
 
-export function activateMembership(
+export async function activateMembership(
   userId: string,
   expiresAt: Date,
   stripeIds: { stripeCustomerId?: string; subscriptionId?: string } = {}
 ) {
-  jsonUpdateUser(userId, {
-    isMember: true,
-    membershipExpiresAt: expiresAt.toISOString(),
-    ...stripeIds,
-  })
-
-  if (prisma) {
-    prisma.user
-      .update({ where: { id: userId }, data: { isMember: true, ...stripeIds } })
-      .catch(err => console.warn('Prisma membership update skipped:', err?.message))
-  }
+  await updateMember(userId, { isMember: true, membershipExpiresAt: expiresAt, ...stripeIds })
 }
 
 // Guards against the webhook and the success-page sync fulfilling the same checkout at once.
-const inFlight = new Map<string, Promise<BookingData>>()
+const inFlight = new Map<string, Promise<BookingRecord>>()
 
-export async function fulfillBooking(args: {
+type FulfillArgs = {
   userId: string
   customerEmail: string
   customerName: string
@@ -69,7 +58,9 @@ export async function fulfillBooking(args: {
   pricePaid: number
   paymentLabel: string
   stripeSessionId?: string
-}): Promise<BookingData> {
+}
+
+export async function fulfillBooking(args: FulfillArgs): Promise<BookingRecord> {
   const key = args.stripeSessionId ?? `${args.userId}:${args.event.id}`
   const pending = inFlight.get(key)
   if (pending) return pending
@@ -87,72 +78,44 @@ async function doFulfillBooking({
   pricePaid,
   paymentLabel,
   stripeSessionId,
-}: Parameters<typeof fulfillBooking>[0]): Promise<BookingData> {
+}: FulfillArgs): Promise<BookingRecord> {
   const existing =
-    (stripeSessionId && jsonFindBooking(b => b.stripeSessionId === stripeSessionId)) ||
-    findUserBookingForEvent(userId, event.id)
+    (stripeSessionId && (await findBookingByStripeSession(stripeSessionId))) ||
+    (await findUserBookingForEvent(userId, event.id))
   if (existing) return existing
 
-  const durationMins = minutesBetween(event.startTime, event.endTime) > 0
-    ? minutesBetween(event.startTime, event.endTime)
-    : 60
+  const meeting = await ensureClassMeeting(event, customerEmail)
 
-  const zoom = await createZoomMeeting({
-    topic: `Breathe Write: ${event.title} – ${customerName}`,
-    date: event.date,
-    startTime: event.startTime,
-    durationMins,
-  })
-
-  const booking = jsonCreateBooking({
+  const booking = await createBooking({
     userId,
+    calendarEventId: event.id,
     offeringSlug: event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
     title: event.title,
     date: event.date,
     startTime: event.startTime,
     endTime: event.endTime,
+    startUtc: ukDateTimeToUtc(event.date, event.startTime),
+    endUtc: ukDateTimeToUtc(event.date, event.endTime),
     pricePaid,
-    status: 'CONFIRMED',
-    stripeSessionId,
-    calendarEventId: event.id,
     customerEmail,
-    meetingUrl: zoom?.joinUrl,
-    startUrl: zoom?.startUrl,
-    zoomMeetingId: zoom?.meetingId,
-    zoomPassword: zoom?.password,
+    stripeSessionId,
+    meeting,
   })
 
-  if (prisma) {
-    try {
-      await prisma.booking.create({
-        data: {
-          userId,
-          offeringSlug: booking.offeringSlug,
-          startTime: ukDateTimeToUtc(event.date, event.startTime),
-          endTime: ukDateTimeToUtc(event.date, event.endTime),
-          pricePaid,
-          status: 'CONFIRMED',
-          stripeSessionId,
-          calendarEventId: event.id,
-        },
-      })
-      await prisma.notification.create({
-        data: { message: `New Booking: ${customerName} booked ${event.title} on ${event.date} at ${event.startTime} (${paymentLabel}).` },
-      })
-    } catch (err) {
-      console.warn('Prisma booking record skipped:', (err as Error)?.message)
-    }
-  }
+  await addAdminNotification(
+    `New Booking: ${customerName} booked ${event.title} on ${event.date} at ${event.startTime} (${paymentLabel}).`
+  )
 
+  const durationMins = minutesBetween(event.startTime, event.endTime)
   await sendBookingEmails({
     customerEmail,
     customerName,
     className: event.title,
     date: formatLongDate(event.date),
     time: `${formatTime12h(event.startTime)} – ${formatTime12h(event.endTime)}`,
-    durationMins,
+    durationMins: durationMins > 0 ? durationMins : 60,
     paymentLabel,
-    zoom,
+    meeting,
   })
 
   return booking
@@ -183,9 +146,12 @@ export async function fulfillStripeCheckoutSession(session: Stripe.Checkout.Sess
     const { end, customerId } = subscriptionId
       ? await subscriptionPeriodEnd(subscriptionId)
       : { end: oneMonthFromNow(), customerId: undefined }
-    activateMembership(userId, end, { stripeCustomerId: customerId, subscriptionId })
+    await activateMembership(userId, end, { stripeCustomerId: customerId, subscriptionId })
 
-    if (!meta.eventId) return
+    if (!meta.eventId) {
+      await addAdminNotification(`New Membership: ${customerName} (${customerEmail}) joined the monthly membership.`)
+      return
+    }
     const event = await getCalendarEventById(meta.eventId)
     if (!event) return console.error(`[CHECKOUT] Event ${meta.eventId} not found for membership session ${session.id}`)
     await fulfillBooking({
@@ -218,23 +184,17 @@ export async function fulfillStripeCheckoutSession(session: Stripe.Checkout.Sess
 
 export async function syncSubscriptionRenewal(subscriptionId: string) {
   const { end, userId, customerId } = await subscriptionPeriodEnd(subscriptionId)
-  const ownerId = userId || jsonFindUserBySubscription(subscriptionId)?.id
+  const ownerId = userId || (await findMemberIdBySubscription(subscriptionId))
   if (!ownerId) return
-  activateMembership(ownerId, end, { stripeCustomerId: customerId, subscriptionId })
+  await activateMembership(ownerId, end, { stripeCustomerId: customerId, subscriptionId })
 }
 
-export function endMembershipForSubscription(subscriptionId: string) {
-  const user = jsonFindUserBySubscription(subscriptionId)
-  if (user) jsonUpdateUser(user.id, { isMember: false })
-
-  if (prisma) {
-    prisma.user
-      .updateMany({ where: { subscriptionId }, data: { isMember: false, subscriptionId: null } })
-      .catch(err => console.warn('Prisma membership cancel skipped:', err?.message))
-  }
+export async function endMembershipForSubscription(subscriptionId: string) {
+  const userId = await findMemberIdBySubscription(subscriptionId)
+  if (userId) await updateMember(userId, { isMember: false, subscriptionId: null })
 }
 
-// Fallback for when the success redirect lands before (or without) the webhook, e.g. local dev without `stripe listen`.
+// Fallback for when the success redirect lands before (or without) the webhook.
 export async function confirmCheckoutForUser(sessionId: string, userId: string) {
   if (!isStripeConfigured() || !sessionId.startsWith('cs_')) return
   try {
@@ -243,5 +203,16 @@ export async function confirmCheckoutForUser(sessionId: string, userId: string) 
     await fulfillStripeCheckoutSession(session)
   } catch (err) {
     console.error('[CHECKOUT] Could not confirm session on return:', err)
+  }
+}
+
+export async function createBillingPortalUrl(stripeCustomerId: string, returnUrl: string): Promise<string | null> {
+  if (!isStripeConfigured()) return null
+  try {
+    const portal = await stripe.billingPortal.sessions.create({ customer: stripeCustomerId, return_url: returnUrl })
+    return portal.url
+  } catch (err) {
+    console.error('[STRIPE] Billing portal error:', err)
+    return null
   }
 }

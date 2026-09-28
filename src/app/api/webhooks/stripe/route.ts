@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       }
 
       case "customer.subscription.deleted":
-        endMembershipForSubscription(event.data.object.id)
+        await endMembershipForSubscription(event.data.object.id)
         break
     }
   } catch (error) {

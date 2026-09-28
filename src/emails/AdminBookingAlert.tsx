@@ -9,6 +9,7 @@ interface AdminBookingAlertProps {
   time: string;
   durationMins: number;
   paymentLabel: string;
+  providerName: string;
   joinLink?: string;
   startLink?: string;
   meetingId?: string;
@@ -23,6 +24,7 @@ export const AdminBookingAlertEmail = ({
   time,
   durationMins,
   paymentLabel,
+  providerName,
   joinLink,
   startLink,
   meetingId,
@@ -50,17 +52,18 @@ export const AdminBookingAlertEmail = ({
               <Text style={detailText}><strong>Time:</strong> {time} (UK time)</Text>
               <Text style={detailText}><strong>Duration:</strong> {durationMins} minutes</Text>
               <Text style={detailText}><strong>Payment:</strong> {paymentLabel}</Text>
-              {meetingId && <Text style={detailText}><strong>Zoom Meeting ID:</strong> {meetingId}</Text>}
+              {meetingId && <Text style={detailText}><strong>Meeting ID:</strong> {meetingId}</Text>}
               {passcode && <Text style={detailText}><strong>Passcode:</strong> {passcode}</Text>}
             </div>
 
             {startLink && joinLink ? (
               <>
                 <Text style={text}>
-                  <strong>Zoom Host / Start Link:</strong>
+                  <strong>{providerName} host link</strong>
+                  {providerName === 'Google Meet' ? ' (open it while signed in to the Google account connected in the admin dashboard)' : ''}:
                 </Text>
                 <Link href={startLink} style={button}>
-                  Start Zoom Session (Host)
+                  Start {providerName} Session (Host)
                 </Link>
                 <Text style={footerText}>
                   Customer Join Link: <Link href={joinLink}>{joinLink}</Link>
@@ -68,7 +71,7 @@ export const AdminBookingAlertEmail = ({
               </>
             ) : (
               <Text style={text}>
-                <strong>The Zoom meeting could not be created automatically.</strong> Please create it manually and send the joining link to the customer. Check the server logs for the Zoom error.
+                <strong>The online meeting could not be created automatically.</strong> Please create it manually and send the joining link to the customer, then check that Google (or Zoom) is connected on the admin dashboard.
               </Text>
             )}
           </Section>
