@@ -12,7 +12,8 @@ import {
   isStripeConfigured,
   oneMonthFromNow,
 } from "@/lib/bookings"
-import { upsertCustomer } from "@/lib/store"
+import { getAccount, upsertCustomer } from "@/lib/store"
+import { auth } from "@/auth"
 import { MEMBERSHIP_PRICE_GBP, membershipCoversClass } from "@/lib/membership"
 import { isClassPast, ukDateTimeToUtc, formatLongDate, formatTime12h } from "@/lib/time"
 
@@ -24,13 +25,27 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 export async function createCheckoutSession(
   eventId: string | null,
   wantsMembership: boolean,
-  customer: { name: string; email: string }
+  guest?: { name: string; email: string }
 ): Promise<CheckoutResult> {
-  const customerName = String(customer?.name ?? '').trim().slice(0, 100)
-  const customerEmail = String(customer?.email ?? '').trim().toLowerCase()
-  if (!customerName) return { error: 'Please enter your name.' }
-  if (!EMAIL_RE.test(customerEmail) || customerEmail.length > 254) return { error: 'Please enter a valid email address.' }
   if (!eventId && !wantsMembership) return { error: 'Please choose a class from the calendar.' }
+
+  // Logged-in member accounts book with their account; everyone else checks out as a guest.
+  const session = await auth()
+  const sessionRole = (session?.user as { role?: string } | undefined)?.role
+  const account = session?.user?.id && sessionRole !== 'ADMIN' ? await getAccount(session.user.id) : null
+
+  let customerName: string
+  let customerEmail: string
+  if (account?.email) {
+    customerEmail = account.email
+    customerName = account.name || account.email.split('@')[0]
+  } else {
+    if (wantsMembership) return { error: 'Please create an account or log in to buy a membership.' }
+    customerName = String(guest?.name ?? '').trim().slice(0, 100)
+    customerEmail = String(guest?.email ?? '').trim().toLowerCase()
+    if (!customerName) return { error: 'Please enter your name.' }
+    if (!EMAIL_RE.test(customerEmail) || customerEmail.length > 254) return { error: 'Please enter a valid email address.' }
+  }
 
   const event = eventId ? await getCalendarEventById(eventId) : null
   if (eventId) {
@@ -38,17 +53,16 @@ export async function createCheckoutSession(
     if (isClassPast(event.date, event.startTime)) return { error: 'This class has already started and can no longer be booked.' }
   }
 
-  const userId = await upsertCustomer(customerEmail, customerName)
+  const userId = account?.id ?? (await upsertCustomer(customerEmail, customerName))
 
   if (event) {
     const existing = await findUserBookingForEvent(userId, event.id)
     if (existing) redirect(`/book/confirmed?b=${existing.id}&existing=1`)
   }
 
-  const membership = await getMembership(userId)
+  const membership = account ? await getMembership(userId) : { active: false, expiresAt: null }
 
-  // Members book any class inside their membership period for free. The link is only emailed,
-  // so typing someone else's email doesn't reveal their meeting link.
+  // Logged-in members book any class inside their membership period for free.
   if (event && !wantsMembership && membershipCoversClass(membership, ukDateTimeToUtc(event.date, event.startTime))) {
     const booking = await fulfillBooking({ userId, customerEmail, customerName, event, pricePaid: 0, paymentLabel: 'Monthly membership (no charge)' })
     redirect(`/book/confirmed?b=${booking.id}`)

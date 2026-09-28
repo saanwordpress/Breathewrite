@@ -2,25 +2,33 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import { verifyPassword } from "@/lib/password"
+import { findAccountByEmail } from "@/lib/store"
 
 const isDev = process.env.NODE_ENV !== "production"
 
-// Customers don't have accounts (they enter name + email at checkout); only the admin signs in.
+// Accounts are only needed for membership; single classes are booked as a guest.
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET || (isDev ? "breathewrite-local-dev-secret" : undefined),
   trustHost: true,
   session: { strategy: "jwt", maxAge: 60 * 60 * 12 },
   providers: [
     Credentials({
-      name: "Admin",
+      name: "Account",
       credentials: {
-        username: { label: "Username", type: "text" },
+        username: { label: "Email or username", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         const username = String(credentials?.username ?? "").trim().toLowerCase()
         const password = String(credentials?.password ?? "")
         if (!username || !password) return null
+
+        // Members log in with their email; the admin with a username.
+        if (username.includes("@")) {
+          const account = await findAccountByEmail(username)
+          if (!account?.passwordHash || !(await verifyPassword(password, account.passwordHash))) return null
+          return { id: account.id, name: account.name, email: account.email, role: account.role }
+        }
 
         if (prisma) {
           const user = await prisma.user.findUnique({ where: { username } })

@@ -1,6 +1,10 @@
 import { redirect } from 'next/navigation'
 import { getCalendarEventById } from '@/app/actions/calendar'
-import { isClassPast } from '@/lib/time'
+import { isClassPast, ukDateTimeToUtc } from '@/lib/time'
+import { auth } from '@/auth'
+import { getAccount } from '@/lib/store'
+import { findUserBookingForEvent, getMembership } from '@/lib/bookings'
+import { membershipCoversClass } from '@/lib/membership'
 import { activeMeetingProvider } from '@/lib/meetings'
 import { BookingWizard } from './BookingWizard'
 
@@ -22,6 +26,13 @@ export default async function BookPage({
     ? { id: found.id, title: found.title, date: found.date, startTime: found.startTime, endTime: found.endTime, price: found.price }
     : null
 
+  const session = await auth()
+  const role = (session?.user as { role?: string } | undefined)?.role
+  const account = session?.user?.id && role !== 'ADMIN' ? await getAccount(session.user.id) : null
+  const membership = account ? await getMembership(account.id) : { active: false, expiresAt: null }
+  const alreadyBooked = !!(account && event && (await findUserBookingForEvent(account.id, event.id)))
+  const returnTo = eventId ? `/book?eventId=${eventId}` : '/book?membership=true'
+
   return (
     <div className="flex flex-col w-full bg-background min-h-screen pt-24 pb-24">
       <div className="container mx-auto px-6 max-w-2xl">
@@ -30,7 +41,9 @@ export default async function BookPage({
             {wantsMembership && !event ? 'Become a Member' : 'Book a Session'}
           </h1>
           <p className="text-foreground/70 font-light">
-            Enter your details below to secure your spot. No account needed.
+            {wantsMembership && !event
+              ? 'Create an account or log in, then pay securely with Stripe.'
+              : 'Single classes don’t need an account. Members: log in to book for free.'}
           </p>
         </div>
 
@@ -41,6 +54,12 @@ export default async function BookPage({
           isPast={event ? isClassPast(event.date, event.startTime) : false}
           canceled={sp.canceled === 'true'}
           meetingLabel={activeMeetingProvider() === 'zoom' ? 'Zoom' : 'Google Meet'}
+          account={account?.email ? { name: account.name ?? '', email: account.email } : null}
+          membership={membership}
+          alreadyBooked={alreadyBooked}
+          coveredByMembership={!!event && membershipCoversClass(membership, ukDateTimeToUtc(event.date, event.startTime))}
+          returnTo={returnTo}
+          initialAddMembership={sp.addMembership === '1'}
         />
       </div>
     </div>

@@ -79,6 +79,7 @@ export type UserData = {
   membershipExpiresAt?: string
   stripeCustomerId?: string
   subscriptionId?: string
+  passwordHash?: string
   role: 'ADMIN' | 'CUSTOMER'
   createdAt: string
 }
@@ -424,6 +425,10 @@ export function jsonUpdateUser(userId: string, patch: Partial<Omit<UserData, 'id
   }
   writeDb(db)
   return true
+}
+
+export function jsonFindUserByEmail(email: string): UserData | null {
+  return readDb().users.find(u => u.email === email) || null
 }
 
 export function jsonUpsertUserByEmail(email: string, name: string): string {

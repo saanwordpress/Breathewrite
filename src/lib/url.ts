@@ -7,3 +7,8 @@ export async function appBaseUrl(): Promise<string> {
   const proto = h.get('x-forwarded-proto') || (host.startsWith('localhost') ? 'http' : 'https')
   return `${proto}://${host}`
 }
+
+// Only allow redirects back into this site after login.
+export function safeCallback(value: unknown): string {
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value : '/dashboard'
+}

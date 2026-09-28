@@ -12,6 +12,7 @@ import {
   jsonSetEventMeetingIfEmpty,
   jsonUpdateUser,
   jsonUpsertUserByEmail,
+  jsonFindUserByEmail,
 } from '@/lib/json-db'
 
 // Supabase (via Prisma) when DATABASE_URL is set; the local .data/store.json file otherwise (dev only).
@@ -66,7 +67,40 @@ export type NewBooking = {
 
 // ---------- Users / membership ----------
 
-// Customers have no login; they are identified by the email entered at checkout.
+export type Account = { id: string; email: string | null; name: string | null; role: string; passwordHash: string | null }
+
+export async function findAccountByEmail(email: string): Promise<Account | null> {
+  if (prisma) {
+    return prisma.user.findUnique({ where: { email }, select: { id: true, email: true, name: true, role: true, passwordHash: true } })
+  }
+  const u = jsonFindUserByEmail(email)
+  return u ? { id: u.id, email: u.email, name: u.name, role: u.role, passwordHash: u.passwordHash ?? null } : null
+}
+
+export async function getAccount(id: string): Promise<Account | null> {
+  if (prisma) {
+    return prisma.user.findUnique({ where: { id }, select: { id: true, email: true, name: true, role: true, passwordHash: true } })
+  }
+  const u = jsonGetUser(id)
+  return u ? { id: u.id, email: u.email, name: u.name, role: u.role, passwordHash: u.passwordHash ?? null } : null
+}
+
+// Creates a member account, or adds a password to a customer record created by an earlier guest booking.
+export async function createAccount(email: string, name: string, passwordHash: string): Promise<{ id: string } | { error: string }> {
+  const existing = await findAccountByEmail(email)
+  if (existing?.passwordHash) return { error: 'An account with this email already exists. Please log in instead.' }
+  if (prisma) {
+    const u = existing
+      ? await prisma.user.update({ where: { id: existing.id }, data: { name, passwordHash }, select: { id: true } })
+      : await prisma.user.create({ data: { email, name, passwordHash }, select: { id: true } })
+    return u
+  }
+  const id = jsonUpsertUserByEmail(email, name)
+  jsonUpdateUser(id, { name, passwordHash })
+  return { id }
+}
+
+// Guests are identified by the email entered at checkout (no account needed for single classes).
 export async function upsertCustomer(email: string, name: string): Promise<string> {
   if (prisma) {
     const u = await prisma.user.upsert({

@@ -11,7 +11,7 @@ export default async function AdminLayout({
   // @ts-ignore
   if (!session?.user || session.user.role !== 'ADMIN') {
     // Customers are strictly barred from admin routes and redirected to their dashboard/calendar
-    redirect('/login')
+    redirect('/login?as=admin')
   }
 
   return <>{children}</>

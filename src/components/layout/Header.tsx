@@ -69,8 +69,11 @@ export function Header() {
 
         {/* CTAs */}
         <div className="hidden md:flex items-center gap-4">
-          <Link href="/login" className="text-sm font-medium text-primary hover:text-accent transition-colors">
+          <Link href="/login?as=admin" className="text-xs font-medium text-muted-foreground hover:text-accent transition-colors">
             Admin Login
+          </Link>
+          <Link href="/dashboard" className="text-sm font-medium text-primary hover:text-accent transition-colors">
+            Member Login
           </Link>
           <Link href="/calendar" className={buttonVariants({ className: "rounded-full px-6 py-5 text-sm tracking-wide" })}>
             Book Now
@@ -120,7 +123,10 @@ export function Header() {
                 </Link>
               ))}
               <div className="h-px w-full bg-border my-4" />
-              <Link href="/login" className="text-xl font-heading text-secondary">
+              <Link href="/dashboard" className="text-xl font-heading text-secondary">
+                Member Login
+              </Link>
+              <Link href="/login?as=admin" className="text-base font-heading text-muted-foreground">
                 Admin Login
               </Link>
               <Link href="/calendar" className={buttonVariants({ className: "rounded-full w-full py-6 text-lg mt-4" })}>
