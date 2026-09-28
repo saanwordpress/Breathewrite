@@ -2,31 +2,88 @@ import { auth, signOut } from "@/auth"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { jsonGetBookings } from "@/lib/json-db"
+import { confirmCheckoutForUser, getMembership } from "@/lib/bookings"
+import { formatLongDate, formatTime12h, isClassPast } from "@/lib/time"
+import { Video, Calendar, Sparkles, CheckCircle2 } from "lucide-react"
 
-export default async function DashboardPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
   const session = await auth()
 
   if (!session?.user) {
-    redirect('/login')
+    redirect('/login?callbackUrl=%2Fdashboard')
   }
 
-  // @ts-ignore - Assuming role and isMember are set in auth callback
-  const { name, email, isMember, role } = session.user
+  // @ts-ignore
+  const { id: userId, name, email, role } = session.user
+  const sp = await searchParams
+
+  if (userId && typeof sp.session_id === 'string') {
+    await confirmCheckoutForUser(sp.session_id, userId)
+  }
+
+  const membership = userId ? getMembership(userId) : { active: false, expiresAt: null }
+  const isMember = membership.active
+  const memberUntil = membership.expiresAt ? formatLongDate(membership.expiresAt.slice(0, 10)) : null
+
+  const userBookings = (userId ? jsonGetBookings(userId) : [])
+    .filter(b => b.status === 'CONFIRMED')
+    .map(b => ({ ...b, isPast: isClassPast(b.date, b.endTime || b.startTime) }))
+    .sort((a, b) =>
+      a.isPast !== b.isPast
+        ? Number(a.isPast) - Number(b.isPast)
+        : (a.isPast ? -1 : 1) * `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)
+    )
+
+  const banner =
+    sp.booking === 'success' || sp.checkout === 'success'
+      ? 'Your booking is confirmed! Your Zoom joining link has been emailed to you and is shown below.'
+      : sp.membership === 'success'
+      ? 'Welcome to the membership! You can now book any class on the calendar at no extra charge.'
+      : sp.booking === 'exists'
+      ? "You're already booked into that class. Your joining link is below."
+      : sp.membership === 'active'
+      ? 'Your membership is already active.'
+      : null
 
   return (
-    <div className="flex flex-col w-full bg-background pt-24 pb-24 min-h-screen">
+    <div className="flex flex-col w-full bg-[#F5F4F0] pt-12 pb-24 min-h-screen">
       <div className="container mx-auto px-6 md:px-12 max-w-5xl">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-border pb-8 mb-12 gap-6">
+        {banner && (
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#5B8260]/40 bg-[#5B8260]/10 p-5 text-sm text-foreground">
+            <CheckCircle2 className="w-5 h-5 shrink-0 text-[#5B8260]" />
+            <span>{banner}</span>
+          </div>
+        )}
+
+        {/* Profile Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white border border-border/40 rounded-3xl p-8 mb-8 shadow-sm gap-6">
           <div>
-            <h1 className="text-4xl font-heading mb-2">Welcome, {name || email}</h1>
-            <p className="text-foreground/70 font-light">
-              {isMember ? 'Active Member' : 'Guest'}
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-heading text-primary">Welcome, {name || email}</h1>
+              {isMember && (
+                <span className="bg-[#5B8260] text-white text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
+                  <Sparkles className="w-3.5 h-3.5" /> Monthly Member
+                </span>
+              )}
+            </div>
+            <p className="text-muted-foreground text-sm font-light">
+              {isMember
+                ? `Your monthly membership is active${memberUntil ? ` until ${memberUntil}` : ''}. You can book any available class on the calendar for free.`
+                : 'Book upcoming classes or upgrade to monthly membership for unlimited access.'}
             </p>
           </div>
-          <div className="flex gap-4">
+
+          <div className="flex items-center gap-3 flex-wrap">
             {role === 'ADMIN' && (
-              <Button asChild variant="outline" className="rounded-full">
-                <Link href="/admin">Admin Settings</Link>
+              <Button asChild variant="outline" className="rounded-full border-border">
+                <Link href="/admin">Admin Dashboard</Link>
               </Button>
             )}
             <form
@@ -35,61 +92,108 @@ export default async function DashboardPage() {
                 await signOut()
               }}
             >
-              <Button type="submit" variant="ghost" className="rounded-full">
+              <Button type="submit" variant="ghost" className="rounded-full text-muted-foreground hover:text-foreground">
                 Sign Out
               </Button>
             </form>
           </div>
         </div>
 
+        {/* Dashboard Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 space-y-8">
-            <h2 className="text-2xl font-heading">Upcoming Sessions</h2>
-            <div className="bg-card border border-border rounded-3xl p-8 flex flex-col items-center justify-center min-h-[300px] text-center">
-              <p className="text-foreground/60 font-light mb-6">You have no upcoming sessions booked.</p>
-              <Button asChild className="rounded-full">
-                <Link href="/calendar">View Calendar</Link>
+          {/* Bookings List */}
+          <div className="md:col-span-2 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-heading text-primary">My Booked Sessions</h2>
+              <Button asChild variant="outline" size="sm" className="rounded-full border-border text-xs">
+                <Link href="/calendar">+ Book New Class</Link>
               </Button>
             </div>
+
+            {userBookings.length === 0 ? (
+              <div className="bg-white border border-border/40 rounded-3xl p-10 flex flex-col items-center justify-center text-center shadow-sm">
+                <Calendar className="w-12 h-12 text-muted-foreground/40 mb-4" />
+                <h3 className="text-lg font-heading mb-2">No Upcoming Sessions Booked</h3>
+                <p className="text-muted-foreground font-light text-sm max-w-sm mb-6">
+                  {isMember
+                    ? 'As an active member, browse the calendar to reserve your spot for any available class at no extra charge.'
+                    : 'Browse the session calendar to book your next breathwork journey.'}
+                </p>
+                <Button asChild className="rounded-full px-8">
+                  <Link href="/calendar">Browse Class Calendar</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {userBookings.map((booking) => (
+                  <div
+                    key={booking.id}
+                    className={`bg-white border border-border/40 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${booking.isPast ? 'opacity-60' : ''}`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <CheckCircle2 className="w-4 h-4 text-[#5B8260]" />
+                        <h3 className="text-lg font-heading text-primary">{booking.title}</h3>
+                      </div>
+                      <p className="text-xs text-muted-foreground font-light">
+                        {formatLongDate(booking.date)} · {formatTime12h(booking.startTime)} – {formatTime12h(booking.endTime)} (UK)
+                        {booking.pricePaid === 0 ? ' · Membership' : ` · £${booking.pricePaid.toFixed(2)}`}
+                      </p>
+                      {booking.zoomMeetingId && !booking.isPast && (
+                        <p className="text-xs text-muted-foreground font-light mt-1">
+                          Meeting ID {booking.zoomMeetingId}{booking.zoomPassword ? ` · Passcode ${booking.zoomPassword}` : ''}
+                        </p>
+                      )}
+                    </div>
+
+                    {booking.isPast ? (
+                      <span className="text-xs text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-full font-medium">
+                        Completed
+                      </span>
+                    ) : booking.meetingUrl ? (
+                      <Button asChild size="sm" className="rounded-full bg-[#4A6FA5] hover:bg-[#3B5B88] text-white">
+                        <a href={booking.meetingUrl} target="_blank" rel="noreferrer">
+                          <Video className="w-4 h-4 mr-2" />
+                          Join Zoom Session
+                        </a>
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-full font-medium">
+                        Confirmed · link to follow by email
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="space-y-8">
-            <h2 className="text-2xl font-heading">Membership</h2>
-            <div className="bg-primary text-primary-foreground rounded-3xl p-8 shadow-lg">
+          {/* Sidebar */}
+          <div className="space-y-6">
+            <h2 className="text-2xl font-heading text-primary">Membership Status</h2>
+            <div className="bg-primary text-primary-foreground rounded-3xl p-8 shadow-md">
               {isMember ? (
                 <>
-                  <h3 className="text-xl font-medium mb-4">Active Subscription</h3>
-                  <p className="text-primary-foreground/80 font-light text-sm mb-8">
-                    You have unlimited access to all live online sessions and the resource library.
+                  <h3 className="text-xl font-heading mb-3">Active Member Pass</h3>
+                  <p className="text-primary-foreground/80 font-light text-xs leading-relaxed mb-6">
+                    You have unlimited access to live online group sessions{memberUntil ? ` until ${memberUntil}` : ''}. Visit the calendar to reserve any available date for £0.
                   </p>
                   <Button asChild variant="secondary" className="w-full rounded-full">
-                    {/* In a real app this would link to Stripe Customer Portal */}
-                    <Link href="#">Manage Billing</Link>
+                    <Link href="/calendar">Book Class for £0</Link>
                   </Button>
                 </>
               ) : (
                 <>
-                  <h3 className="text-xl font-medium mb-4">Become a Member</h3>
-                  <p className="text-primary-foreground/80 font-light text-sm mb-8">
-                    Get unlimited access to online sessions, priority booking, and exclusive content.
+                  <h3 className="text-xl font-heading mb-3">Monthly Membership</h3>
+                  <p className="text-primary-foreground/80 font-light text-xs leading-relaxed mb-6">
+                    Unlock unlimited access to all live sessions for £45/month.
                   </p>
                   <Button asChild variant="secondary" className="w-full rounded-full">
-                    <Link href="/membership">Upgrade</Link>
+                    <Link href="/membership">Upgrade for £45/mo</Link>
                   </Button>
                 </>
               )}
             </div>
-            
-            {isMember && (
-              <div className="bg-card border border-border rounded-3xl p-8">
-                <h3 className="text-lg font-heading mb-4">Member Resources</h3>
-                <ul className="space-y-4 text-sm font-light">
-                  <li><Link href="/dashboard/recordings" className="text-accent hover:underline">Session Recordings Library</Link></li>
-                  <li><Link href="/dashboard/guides" className="text-accent hover:underline">Integration Guides</Link></li>
-                  <li><Link href="/dashboard/community" className="text-accent hover:underline">Private Community</Link></li>
-                </ul>
-              </div>
-            )}
           </div>
         </div>
       </div>

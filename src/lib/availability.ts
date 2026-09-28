@@ -1,9 +1,5 @@
-import { PrismaClient } from '@prisma/client'
-
-// Global prisma client to avoid exhausting connections in dev
-const globalForPrisma = global as unknown as { prisma: PrismaClient }
-export const prisma = globalForPrisma.prisma || new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import { prisma } from "@/lib/prisma"
+import { jsonGetSchedule, jsonGetOverrides } from "@/lib/json-db"
 
 export type TimeSlot = {
   time: string; // "09:00"
@@ -17,34 +13,40 @@ export type DayAvailability = {
 }
 
 export async function getMonthAvailability(year: number, month: number, durationMins: number): Promise<DayAvailability[]> {
-  try {
-    // 1. Fetch schedules
-    const schedules = await prisma.availabilitySchedule.findMany()
-    
-    // 2. Fetch overrides for the month
-    const startDate = new Date(Date.UTC(year, month - 1, 1))
-    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59))
-    
-    const overrides = await prisma.availabilityOverride.findMany({
-      where: {
-        date: { gte: startDate, lte: endDate }
-      }
-    })
-    
-    // 3. Fetch bookings for the month
-    const bookings = await prisma.booking.findMany({
-      where: {
-        startTime: { gte: startDate },
-        endTime: { lte: endDate },
-        status: { not: 'CANCELLED' }
-      }
-    })
+  if (prisma) {
+    try {
+      // 1. Fetch schedules
+      const schedules = await prisma.availabilitySchedule.findMany()
+      
+      // 2. Fetch overrides for the month
+      const startDate = new Date(Date.UTC(year, month - 1, 1))
+      const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59))
+      
+      const overrides = await prisma.availabilityOverride.findMany({
+        where: {
+          date: { gte: startDate, lte: endDate }
+        }
+      })
+      
+      // 3. Fetch bookings for the month
+      const bookings = await prisma.booking.findMany({
+        where: {
+          startTime: { gte: startDate },
+          endTime: { lte: endDate },
+          status: { not: 'CANCELLED' }
+        }
+      })
 
-    return calculateSlots(year, month, durationMins, schedules, overrides, bookings)
-  } catch (error) {
-    console.warn("Database connection failed. Falling back to mock availability data.", error)
-    return getMockAvailability(year, month, durationMins)
+      return calculateSlots(year, month, durationMins, schedules, overrides, bookings)
+    } catch (error) {
+      console.warn("Database connection failed. Falling back to local availability data.", error)
+    }
   }
+
+  // Fallback to json DB schedule & overrides
+  const schedules = jsonGetSchedule()
+  const overrides = jsonGetOverrides()
+  return calculateSlots(year, month, durationMins, schedules, overrides, [])
 }
 
 function calculateSlots(
@@ -76,7 +78,10 @@ function calculateSlots(
     let startTimeStr = "09:00"
     let endTimeStr = "17:00"
 
-    const override = overrides.find(o => o.date.toISOString().split('T')[0] === dateString)
+    const override = overrides.find(o => {
+      const oDate = typeof o.date === 'string' ? o.date : o.date.toISOString().split('T')[0]
+      return oDate === dateString
+    })
     if (override) {
       isWorking = override.isWorking
       if (isWorking) {
@@ -162,8 +167,4 @@ function generateTimeSlots(dateStr: string, startStr: string, endStr: string, du
   }
 
   return slots
-}
-
-function getMockAvailability(year: number, month: number, durationMins: number): DayAvailability[] {
-  return calculateSlots(year, month, durationMins, [], [], [])
 }

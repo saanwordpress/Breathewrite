@@ -93,8 +93,10 @@ model Booking {
   pricePaid       Float     @default(0) // 0 if member
   status          BookingStatus @default(PENDING)
   stripeSessionId String?   @unique
+  calendarEventId String?
   
   user            User      @relation(fields: [userId], references: [id])
+  calendarEvent   CalendarEvent? @relation(fields: [calendarEventId], references: [id])
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -107,6 +109,36 @@ enum BookingStatus {
   PENDING
   CONFIRMED
   CANCELLED
+}
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String              // e.g. "Breathe & Flow" or custom name
+  date        DateTime             // The date of the event (stored at midnight UTC)
+  startTime   String              // e.g. "10:00"
+  endTime     String              // e.g. "11:00"
+  price       Float    @default(0) // Price in GBP
+  isPublished Boolean  @default(false) // Draft until admin clicks "Save Calendar"
+  
+  bookings    Booking[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([date])
+  @@index([isPublished, date])
+}
+
+model ClassType {
+  id          String   @id @default(cuid())
+  name        String   @unique       // e.g. "Breathe & Flow"
+  price       Float    @default(0)   // Default price in GBP
+  duration    Int      @default(60)  // Default duration in minutes
+  color       String   @default("#4A6FA5") // Display color for calendar
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Notification {

@@ -1,7 +1,7 @@
 'use server'
 
 import { auth } from "@/auth"
-import { prisma } from "@/lib/availability"
+import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 
 export async function getNotifications() {
@@ -10,6 +10,8 @@ export async function getNotifications() {
   if (!session?.user || session.user.role !== 'ADMIN') {
     return []
   }
+
+  if (!prisma) return []
 
   try {
     const notifications = await prisma.notification.findMany({
@@ -30,6 +32,8 @@ export async function markNotificationAsRead(id: string) {
     throw new Error('Unauthorized')
   }
 
+  if (!prisma) return { success: true }
+
   try {
     await prisma.notification.update({
       where: { id },
@@ -49,6 +53,8 @@ export async function markAllNotificationsAsRead() {
   if (!session?.user || session.user.role !== 'ADMIN') {
     throw new Error('Unauthorized')
   }
+
+  if (!prisma) return { success: true }
 
   try {
     await prisma.notification.updateMany({

@@ -16,6 +16,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
+        if (process.env.NODE_ENV === "production") return null
         if (credentials.email === "admin@test.com" && credentials.password === "admin") {
           return { id: "1", name: "Admin User", email: "admin@test.com", role: "ADMIN" }
         }

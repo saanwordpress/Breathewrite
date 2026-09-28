@@ -52,7 +52,7 @@ export function Footer() {
       <div className="relative container mx-auto px-6 md:px-12 py-20 grid grid-cols-1 md:grid-cols-4 gap-12 z-10">
         {/* Brand */}
         <div className="md:col-span-2 space-y-6">
-          <Link href="/" className="font-heading text-3xl font-semibold tracking-wide block hover:opacity-80 transition-opacity">
+          <Link href="/calendar" className="font-heading text-3xl font-semibold tracking-wide block hover:opacity-80 transition-opacity">
             Breathe Write
           </Link>
           <p className="text-primary-foreground/70 max-w-sm text-lg font-light leading-relaxed">
@@ -73,22 +73,10 @@ export function Footer() {
           <h3 className="font-heading text-xl mb-8 text-accent">Explore</h3>
           <ul className="space-y-4 font-light text-[15px]">
             <li>
-              <Link href="/offerings" className="text-primary-foreground/70 hover:text-accent transition-colors">Offerings</Link>
-            </li>
-            <li>
               <Link href="/calendar" className="text-primary-foreground/70 hover:text-accent transition-colors">Calendar</Link>
             </li>
             <li>
               <Link href="/membership" className="text-primary-foreground/70 hover:text-accent transition-colors">Membership</Link>
-            </li>
-            <li>
-              <Link href="/journal" className="text-primary-foreground/70 hover:text-accent transition-colors">Journal</Link>
-            </li>
-            <li>
-              <Link href="/about" className="text-primary-foreground/70 hover:text-accent transition-colors">About Rosalind</Link>
-            </li>
-            <li>
-              <Link href="/testimonials" className="text-primary-foreground/70 hover:text-accent transition-colors">Testimonials</Link>
             </li>
           </ul>
         </div>

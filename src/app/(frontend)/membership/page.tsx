@@ -32,7 +32,7 @@ export default function MembershipPage() {
             <div className="text-center mb-12">
               <h2 className="text-3xl font-heading mb-4 text-foreground">Monthly Membership</h2>
               <div className="flex items-end justify-center gap-2 text-foreground">
-                <span className="text-6xl font-medium">$45</span>
+                <span className="text-6xl font-medium">£45</span>
                 <span className="text-foreground/60 mb-2">/ month</span>
               </div>
             </div>

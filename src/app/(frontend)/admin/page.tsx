@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Users, DollarSign, Calendar as CalendarIcon, Settings } from 'lucide-react'
+import { Users, DollarSign, Calendar as CalendarIcon, Settings, Tag } from 'lucide-react'
 import { getEvents } from "@/lib/mock-db"
 import { NotificationFeed } from './components/NotificationFeed'
 
@@ -34,7 +34,7 @@ export default async function AdminDashboardPage() {
           </div>
           <div className="flex gap-4">
             <Button asChild variant="outline" className="rounded-full border-border">
-              <Link href="/studio" target="_blank">Open Sanity Studio</Link>
+              <Link href="/admin/pricing">Manage Pricing</Link>
             </Button>
             <Button asChild className="rounded-full">
               <Link href="/admin/schedule">Manage Schedule</Link>
@@ -110,6 +110,10 @@ export default async function AdminDashboardPage() {
                <Link href="/admin/schedule" className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors">
                  <CalendarIcon className="w-5 h-5 text-muted-foreground" />
                  <span>Manage Schedule</span>
+               </Link>
+               <Link href="/admin/pricing" className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors">
+                 <Tag className="w-5 h-5 text-muted-foreground" />
+                 <span>Class Pricing</span>
                </Link>
                <a href="https://dashboard.stripe.com" target="_blank" rel="noreferrer" className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors">
                  <DollarSign className="w-5 h-5 text-muted-foreground" />

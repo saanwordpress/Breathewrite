@@ -1,206 +1,209 @@
 'use client'
 
-import { useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Check, Calendar as CalendarIcon, Clock, Users, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Check, Loader2, Sparkles, Video, AlertCircle } from 'lucide-react'
+import { createCheckoutSession } from '@/app/actions/checkout'
+import { MEMBERSHIP_PRICE_GBP, type MembershipStatus } from '@/lib/membership'
+import { formatLongDate, formatTime12h, minutesBetween } from '@/lib/time'
 
-// Map events to unique offerings based on title
-function extractOfferings(events: any[]) {
-  const map = new Map()
-  events.forEach(e => {
-    if (!map.has(e.title)) {
-      map.set(e.title, { id: e.title, title: e.title, price: Number(e.price) || 35 })
-    }
-  })
-  return Array.from(map.values())
+type BookingEvent = {
+  id: string
+  title: string
+  date: string
+  startTime: string
+  endTime: string
+  price: number
 }
 
-export function BookingWizard({ events = [] }: { events: any[] }) {
-  const searchParams = useSearchParams()
-  const initialEventId = searchParams.get('eventId')
-  const wantsMembership = searchParams.get('membership') === 'true'
+type Props = {
+  eventId: string | null
+  event: BookingEvent | null
+  membershipOnly: boolean
+  isLoggedIn: boolean
+  membership: MembershipStatus
+  isPast: boolean
+  alreadyBooked: boolean
+  coveredByMembership: boolean
+  canceled: boolean
+}
 
-  const [step, setStep] = useState(wantsMembership ? 3 : 1)
-  const [selectedOffering, setSelectedOffering] = useState<string | null>(null)
-  const [selectedDate, setSelectedDate] = useState<string | null>(initialEventId)
-  const [participants, setParticipants] = useState(1)
-  const [addMembership, setAddMembership] = useState(wantsMembership)
+function Notice({ title, body, href, cta }: { title: string; body: string; href: string; cta: string }) {
+  return (
+    <div className="bg-card border border-border rounded-3xl p-10 shadow-xl text-center space-y-4">
+      <h2 className="text-2xl font-heading">{title}</h2>
+      <p className="text-foreground/70 font-light">{body}</p>
+      <Button asChild className="rounded-full px-8 mt-2">
+        <Link href={href}>{cta}</Link>
+      </Button>
+    </div>
+  )
+}
 
-  // Handlers
-  const nextStep = () => setStep(s => Math.min(s + 1, 4))
-  const prevStep = () => setStep(s => Math.max(s - 1, 1))
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4 text-sm font-light text-foreground/80">
+      <span>{label}</span>
+      <span className="font-medium text-foreground text-right">{value}</span>
+    </div>
+  )
+}
 
-  const OFFERINGS = extractOfferings(events)
-  
-  // Filter dates based on selected offering
-  const availableDates = events.filter(e => e.title === selectedOffering && e.status !== 'PAST')
+export function BookingWizard({
+  eventId,
+  event,
+  membershipOnly,
+  isLoggedIn,
+  membership,
+  isPast,
+  alreadyBooked,
+  coveredByMembership,
+  canceled,
+}: Props) {
+  const [addMembership, setAddMembership] = useState(membershipOnly)
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  const memberUntil = membership.expiresAt ? formatLongDate(membership.expiresAt.slice(0, 10)) : null
+
+  if (eventId && !event) {
+    return <Notice title="Class not found" body="This class is no longer available. Please pick another date from the calendar." href="/calendar" cta="Back to Calendar" />
+  }
+  if (event && isPast) {
+    return <Notice title="This class has already taken place" body="Past classes can't be booked. Take a look at the upcoming dates instead." href="/calendar" cta="See Upcoming Classes" />
+  }
+  if (event && alreadyBooked) {
+    return <Notice title="You're already booked" body="Your Zoom joining link is in your confirmation email and on your dashboard." href="/dashboard" cta="Go to My Dashboard" />
+  }
+  if (membershipOnly && membership.active) {
+    return <Notice title="You're already a member" body={`Your membership is active${memberUntil ? ` until ${memberUntil}` : ''}. Pick any class on the calendar to reserve your spot at no charge.`} href="/calendar" cta="Browse Classes" />
+  }
+
+  const payingForMembership = membershipOnly || addMembership
+  const isFreeForMember = !!event && coveredByMembership && !addMembership
+
+  const handleCheckout = () => {
+    setError(null)
+    startTransition(async () => {
+      const result = await createCheckoutSession(event?.id ?? null, payingForMembership)
+      if (result?.error) setError(result.error)
+    })
+  }
+
+  const buttonLabel = !isLoggedIn
+    ? 'Sign in to Continue'
+    : isFreeForMember
+    ? 'Reserve My Spot (£0)'
+    : payingForMembership
+    ? `Checkout (£${MEMBERSHIP_PRICE_GBP}/month)`
+    : `Checkout (£${event!.price.toFixed(2)})`
 
   return (
-    <div className="bg-card border border-border rounded-3xl p-6 md:p-10 shadow-xl">
-      {/* Progress */}
-      {!wantsMembership && (
-        <div className="flex items-center justify-between mb-8 relative">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-px bg-border z-0" />
-          {[1, 2, 3].map(i => (
-            <div key={i} className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${step >= i ? 'bg-primary text-primary-foreground' : 'bg-background border border-border text-muted-foreground'}`}>
-              {step > i ? <Check className="w-4 h-4" /> : i}
-            </div>
-          ))}
+    <div className="bg-card border border-border rounded-3xl p-6 md:p-10 shadow-xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <h2 className="text-2xl font-heading">Review & {isFreeForMember ? 'Reserve' : 'Checkout'}</h2>
+
+      {canceled && (
+        <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
+          <AlertCircle className="w-5 h-5 shrink-0 text-muted-foreground" />
+          <span>Payment was cancelled and you have not been charged. You can try again below.</span>
         </div>
       )}
 
-      {/* Step 1: Select Offering */}
-      {step === 1 && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <h2 className="text-2xl font-heading mb-6">Select a Class</h2>
-          {OFFERINGS.length === 0 ? (
-             <p className="text-muted-foreground font-light text-center py-8">No upcoming classes available right now. Please check back later!</p>
-          ) : (
-            <div className="grid gap-4">
-              {OFFERINGS.map(offering => (
-                <button
-                  key={offering.id}
-                  onClick={() => {
-                    setSelectedOffering(offering.id)
-                    setSelectedDate(null) // Reset date if offering changes
-                  }}
-                  className={`p-6 rounded-2xl border text-left transition-all ${selectedOffering === offering.id ? 'border-primary ring-1 ring-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
-                >
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-medium">{offering.title}</h3>
-                    <span className="text-lg">${offering.price}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-          <Button onClick={nextStep} disabled={!selectedOffering} className="w-full rounded-full py-6 mt-4">
-            Continue <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      )}
-
-      {/* Step 2: Select Date & Time */}
-      {step === 2 && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <Button variant="ghost" onClick={prevStep} className="mb-4 -ml-4 text-muted-foreground">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back
-          </Button>
-          <h2 className="text-2xl font-heading mb-6">Choose a Date & Time</h2>
-          {availableDates.length === 0 ? (
-             <p className="text-muted-foreground font-light text-center py-8">No upcoming dates for this offering. Check back soon!</p>
-          ) : (
-            <div className="grid gap-4">
-              {availableDates.map(d => (
-                <button
-                  key={d.id}
-                  onClick={() => d.status !== 'FULL' && setSelectedDate(d.id)}
-                  disabled={d.status === 'FULL'}
-                  className={`p-6 rounded-2xl border flex items-center justify-between transition-all ${
-                    selectedDate === d.id ? 'border-primary ring-1 ring-primary bg-primary/5' : 
-                    d.status === 'FULL' ? 'opacity-50 cursor-not-allowed bg-muted/20 border-border' : 
-                    'border-border hover:border-primary/50'
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                    <div className="flex items-center gap-4">
-                      <CalendarIcon className={`w-5 h-5 ${selectedDate === d.id ? 'text-primary' : 'text-muted-foreground'}`} />
-                      <span className="font-medium text-lg">{d.date}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                      <Clock className="w-4 h-4" />
-                      <span>{d.time}</span>
-                    </div>
-                  </div>
-                  {d.status === 'FULL' ? (
-                     <span className="text-xs uppercase font-semibold text-secondary">Full</span>
-                  ) : (
-                     <span className="text-xs text-muted-foreground">{d.capacity} Booked</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-          
-          <div className="mt-8">
-            <label className="block text-sm font-medium mb-3 text-foreground/80">Number of Participants</label>
-            <div className="flex items-center gap-4">
-              <Button variant="outline" className="rounded-full w-12 h-12 p-0" onClick={() => setParticipants(p => Math.max(1, p - 1))}>-</Button>
-              <span className="text-xl font-medium w-8 text-center">{participants}</span>
-              <Button variant="outline" className="rounded-full w-12 h-12 p-0" onClick={() => setParticipants(p => Math.min(10, p + 1))}>+</Button>
-            </div>
+      {event && (
+        <div className="bg-muted/30 p-6 rounded-2xl space-y-4">
+          <h3 className="font-medium text-lg">Booking Summary</h3>
+          <Row label="Class" value={event.title} />
+          <Row label="Date" value={formatLongDate(event.date)} />
+          <Row label="Time (UK)" value={`${formatTime12h(event.startTime)} – ${formatTime12h(event.endTime)}`} />
+          <Row label="Duration" value={`${minutesBetween(event.startTime, event.endTime)} minutes`} />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground font-light">
+            <Video className="w-4 h-4" /> Live on Zoom. Your joining link is emailed as soon as you book.
           </div>
-
-          <Button onClick={nextStep} disabled={!selectedDate} className="w-full rounded-full py-6 mt-8">
-            Continue <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      )}
-
-      {/* Step 3: Upsell & Checkout */}
-      {step === 3 && (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {!wantsMembership && (
-            <Button variant="ghost" onClick={prevStep} className="mb-2 -ml-4 text-muted-foreground">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back
-            </Button>
-          )}
-          
-          <h2 className="text-2xl font-heading mb-6">Review & Checkout</h2>
-          
-          {/* Summary */}
-          {!wantsMembership && (
-            <div className="bg-muted/30 p-6 rounded-2xl space-y-4">
-              <h3 className="font-medium text-lg">Booking Summary</h3>
-              <div className="flex justify-between text-sm font-light text-foreground/80">
-                <span>Class:</span>
-                <span className="font-medium text-foreground">{OFFERINGS.find(o => o.id === selectedOffering)?.title}</span>
-              </div>
-              <div className="flex justify-between text-sm font-light text-foreground/80">
-                <span>When:</span>
-                <span className="font-medium text-foreground">
-                  {events.find(e => e.id === selectedDate)?.date} @ {events.find(e => e.id === selectedDate)?.time}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm font-light text-foreground/80">
-                <span>Participants:</span>
-                <span className="font-medium text-foreground">{participants}</span>
-              </div>
-              <div className="border-t border-border pt-4 flex justify-between font-medium">
-                <span>Total:</span>
-                <span>${(OFFERINGS.find(o => o.id === selectedOffering)?.price || 0) * participants}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Upsell */}
-          {!wantsMembership && (
-            <button 
-              onClick={() => setAddMembership(!addMembership)}
-              className={`w-full p-6 rounded-2xl border transition-all text-left flex items-start gap-4 ${addMembership ? 'border-accent bg-accent/10 ring-1 ring-accent' : 'border-border hover:border-accent/50'}`}
-            >
-              <div className={`w-6 h-6 rounded-full border flex items-center justify-center flex-shrink-0 mt-0.5 ${addMembership ? 'bg-accent border-accent text-primary' : 'border-border'}`}>
-                {addMembership && <Check className="w-4 h-4" />}
-              </div>
-              <div>
-                <h4 className="font-medium text-lg mb-1">Add Monthly Membership</h4>
-                <p className="text-sm font-light text-foreground/70 mb-2">Get unlimited sessions for just $45/month. This session is included for free if you join today.</p>
-                <span className="text-accent font-medium text-sm block">Highly Recommended</span>
-              </div>
-            </button>
-          )}
-
-          <div className="pt-6">
-            <Button className="w-full rounded-full py-6 text-lg" onClick={() => alert('Redirect to Stripe Checkout')}>
-              {addMembership || wantsMembership ? 'Checkout ($45/month)' : 'Checkout'}
-            </Button>
-            <div className="text-center mt-4 text-sm font-light text-muted-foreground flex items-center justify-center gap-2">
-              <span>Secure checkout via Stripe</span>
-            </div>
+          <div className="border-t border-border pt-4 flex justify-between font-medium">
+            <span>Total</span>
+            {isFreeForMember ? (
+              <span className="flex items-center gap-2">
+                <span className="line-through text-muted-foreground font-light">£{event.price.toFixed(2)}</span>
+                £0.00
+              </span>
+            ) : payingForMembership ? (
+              <span>£{MEMBERSHIP_PRICE_GBP}.00 / month</span>
+            ) : (
+              <span>£{event.price.toFixed(2)}</span>
+            )}
           </div>
         </div>
       )}
+
+      {isFreeForMember && (
+        <div className="flex items-start gap-3 rounded-2xl border border-[#5B8260]/40 bg-[#5B8260]/10 p-5 text-sm">
+          <Sparkles className="w-5 h-5 shrink-0 text-[#5B8260]" />
+          <span>
+            <strong>Included in your membership.</strong> No payment needed
+            {memberUntil ? `. Your membership covers classes until ${memberUntil}.` : '.'}
+          </span>
+        </div>
+      )}
+
+      {event && membership.active && !coveredByMembership && memberUntil && (
+        <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/30 p-5 text-sm">
+          <AlertCircle className="w-5 h-5 shrink-0 text-muted-foreground" />
+          <span>This class is after your current membership period (ends {memberUntil}), so it isn&rsquo;t included yet. Once your membership renews it will be free to book.</span>
+        </div>
+      )}
+
+      {membershipOnly && (
+        <div className="bg-muted/30 p-6 rounded-2xl space-y-4">
+          <h3 className="font-medium text-lg">Monthly Membership</h3>
+          <p className="text-sm font-light text-foreground/80">
+            Book any online group class on the calendar at no extra charge while your membership is active. Renews monthly; cancel anytime.
+          </p>
+          <div className="border-t border-border pt-4 flex justify-between font-medium">
+            <span>Total</span>
+            <span>£{MEMBERSHIP_PRICE_GBP}.00 / month</span>
+          </div>
+        </div>
+      )}
+
+      {event && !membership.active && (
+        <button
+          type="button"
+          onClick={() => setAddMembership(!addMembership)}
+          className={`w-full p-6 rounded-2xl border transition-all text-left flex items-start gap-4 ${addMembership ? 'border-accent bg-accent/10 ring-1 ring-accent' : 'border-border hover:border-accent/50'}`}
+        >
+          <div className={`w-6 h-6 rounded-full border flex items-center justify-center flex-shrink-0 mt-0.5 ${addMembership ? 'bg-accent border-accent text-primary' : 'border-border'}`}>
+            {addMembership && <Check className="w-4 h-4" />}
+          </div>
+          <div>
+            <h4 className="font-medium text-lg mb-1">Add Monthly Membership</h4>
+            <p className="text-sm font-light text-foreground/70 mb-2">
+              £{MEMBERSHIP_PRICE_GBP}/month for unlimited classes. This class is included free when you join today.
+            </p>
+            <span className="text-accent font-medium text-sm block">Highly Recommended</span>
+          </div>
+        </button>
+      )}
+
+      {error && (
+        <div className="flex items-start gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div>
+        <Button className="w-full rounded-full py-6 text-lg" onClick={handleCheckout} disabled={isPending}>
+          {isPending ? (
+            <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Processing...</>
+          ) : (
+            buttonLabel
+          )}
+        </Button>
+        {!isFreeForMember && (
+          <p className="text-center mt-4 text-sm font-light text-muted-foreground">Secure checkout via Stripe</p>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,72 +1,76 @@
 import * as React from 'react';
 import { Html, Head, Preview, Body, Container, Section, Text, Link } from '@react-email/components';
 
-interface BookingConfirmationProps {
-  userName: string;
+interface AdminBookingAlertProps {
+  customerName: string;
+  customerEmail: string;
   className: string;
   date: string;
   time: string;
   durationMins: number;
-  meetLink?: string;
+  paymentLabel: string;
+  joinLink?: string;
+  startLink?: string;
   meetingId?: string;
   passcode?: string;
 }
 
-export const BookingConfirmationEmail = ({
-  userName,
+export const AdminBookingAlertEmail = ({
+  customerName,
+  customerEmail,
   className,
   date,
   time,
   durationMins,
-  meetLink,
+  paymentLabel,
+  joinLink,
+  startLink,
   meetingId,
   passcode,
-}: BookingConfirmationProps) => {
+}: AdminBookingAlertProps) => {
   return (
     <Html>
       <Head />
-      <Preview>Your Breathe Write booking is confirmed</Preview>
+      <Preview>New Booking: {className} by {customerName}</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={header}>
-            <Text style={logo}>Breathe Write</Text>
+            <Text style={logo}>Breathe Write Admin Alert</Text>
           </Section>
           <Section style={content}>
-            <Text style={title}>Your Session is Confirmed</Text>
-            <Text style={text}>Hi {userName},</Text>
+            <Text style={title}>New Session Booking</Text>
             <Text style={text}>
-              Thank you for booking <strong>{className}</strong>. We look forward to breathing with you.
+              A new booking has been confirmed for <strong>{className}</strong>.
             </Text>
-            
+
             <div style={detailsBox}>
+              <Text style={detailText}><strong>Customer:</strong> {customerName} ({customerEmail})</Text>
+              <Text style={detailText}><strong>Class:</strong> {className}</Text>
               <Text style={detailText}><strong>Date:</strong> {date}</Text>
               <Text style={detailText}><strong>Time:</strong> {time} (UK time)</Text>
               <Text style={detailText}><strong>Duration:</strong> {durationMins} minutes</Text>
+              <Text style={detailText}><strong>Payment:</strong> {paymentLabel}</Text>
               {meetingId && <Text style={detailText}><strong>Zoom Meeting ID:</strong> {meetingId}</Text>}
               {passcode && <Text style={detailText}><strong>Passcode:</strong> {passcode}</Text>}
             </div>
 
-            {meetLink ? (
+            {startLink && joinLink ? (
               <>
                 <Text style={text}>
-                  Join your session on Zoom using the link below:
+                  <strong>Zoom Host / Start Link:</strong>
                 </Text>
-                <Link href={meetLink} style={button}>
-                  Join Zoom Session
+                <Link href={startLink} style={button}>
+                  Start Zoom Session (Host)
                 </Link>
                 <Text style={footerText}>
-                  Or copy this link into your browser: <Link href={meetLink}>{meetLink}</Link>
+                  Customer Join Link: <Link href={joinLink}>{joinLink}</Link>
                 </Text>
               </>
             ) : (
               <Text style={text}>
-                Your Zoom joining link will be sent to you separately before the session.
+                <strong>The Zoom meeting could not be created automatically.</strong> Please create it manually and send the joining link to the customer. Check the server logs for the Zoom error.
               </Text>
             )}
-
-            <Text style={footerText}>
-              Please find a quiet, comfortable space where you won't be disturbed. We recommend wearing loose clothing and having a blanket nearby.
-            </Text>
           </Section>
         </Container>
       </Body>
@@ -74,7 +78,7 @@ export const BookingConfirmationEmail = ({
   );
 };
 
-export default BookingConfirmationEmail;
+export default AdminBookingAlertEmail;
 
 const main = {
   backgroundColor: '#F7F6F2',
@@ -93,7 +97,7 @@ const header = {
 };
 
 const logo = {
-  fontSize: '24px',
+  fontSize: '22px',
   fontWeight: '600',
   color: '#2E3337',
   letterSpacing: '2px',
@@ -107,17 +111,17 @@ const content = {
 };
 
 const title = {
-  fontSize: '24px',
+  fontSize: '22px',
   fontWeight: 'bold',
   color: '#2E3337',
-  marginBottom: '24px',
+  marginBottom: '20px',
 };
 
 const text = {
-  fontSize: '16px',
-  lineHeight: '26px',
+  fontSize: '15px',
+  lineHeight: '24px',
   color: '#2E3337',
-  marginBottom: '24px',
+  marginBottom: '20px',
 };
 
 const detailsBox = {
@@ -128,17 +132,17 @@ const detailsBox = {
 };
 
 const detailText = {
-  fontSize: '16px',
+  fontSize: '15px',
   lineHeight: '24px',
   color: '#2E3337',
-  margin: '0',
+  margin: '4px 0',
 };
 
 const button = {
-  backgroundColor: '#2E3337',
-  color: '#F7F6F2',
-  padding: '16px 32px',
-  borderRadius: '40px',
+  backgroundColor: '#4A6FA5',
+  color: '#ffffff',
+  padding: '14px 28px',
+  borderRadius: '30px',
   textDecoration: 'none',
   display: 'inline-block',
   fontWeight: 'bold',
@@ -146,7 +150,7 @@ const button = {
 };
 
 const footerText = {
-  fontSize: '14px',
-  lineHeight: '22px',
+  fontSize: '13px',
+  lineHeight: '20px',
   color: '#6A7382',
 };

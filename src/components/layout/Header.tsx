@@ -8,12 +8,8 @@ import { Menu, X } from 'lucide-react'
 import { Button, buttonVariants } from '../ui/button'
 
 const NAV_LINKS = [
-  { name: 'Home', href: '/' },
-  { name: 'Offerings', href: '/offerings' },
   { name: 'Calendar', href: '/calendar' },
   { name: 'Membership', href: '/membership' },
-  { name: 'Testimonials', href: '/testimonials' },
-  { name: 'Journal', href: '/journal' },
 ]
 
 export function Header() {
@@ -52,7 +48,7 @@ export function Header() {
     >
       <div className="container mx-auto px-6 md:px-12 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="font-heading text-2xl font-semibold tracking-wide text-primary">
+        <Link href="/calendar" className="font-heading text-2xl font-semibold tracking-wide text-primary">
           Breathe Write
         </Link>
 
@@ -102,7 +98,7 @@ export function Header() {
             className="fixed inset-0 z-[100] bg-[#F9F8F6] flex flex-col pt-6 px-6 overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-12">
-              <Link href="/" className="font-heading text-2xl font-semibold tracking-wide text-primary">
+              <Link href="/calendar" className="font-heading text-2xl font-semibold tracking-wide text-primary">
                 Breathe Write
               </Link>
               <button

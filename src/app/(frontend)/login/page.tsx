@@ -40,16 +40,18 @@ export default function LoginPage() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <form
-              action={async () => {
-                "use server"
-                await signIn("credentials", { email: "admin@test.com", password: "admin", redirectTo: "/admin" })
-              }}
-            >
-              <Button type="submit" variant="default" className="w-full rounded-full py-6 font-medium">
-                Log in as Test Admin
-              </Button>
-            </form>
+            {process.env.NODE_ENV !== "production" && (
+              <form
+                action={async () => {
+                  "use server"
+                  await signIn("credentials", { email: "admin@test.com", password: "admin", redirectTo: "/admin" })
+                }}
+              >
+                <Button type="submit" variant="default" className="w-full rounded-full py-6 font-medium">
+                  Log in as Test Admin
+                </Button>
+              </form>
+            )}
 
             <form
               action={async () => {

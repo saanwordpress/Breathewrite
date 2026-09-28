@@ -1,87 +1,51 @@
-import { headers } from "next/headers"
 import { NextResponse } from "next/server"
+import type Stripe from "stripe"
 import { stripe } from "@/lib/stripe"
-import { prisma } from "@/lib/availability"
+import {
+  endMembershipForSubscription,
+  fulfillStripeCheckoutSession,
+  syncSubscriptionRenewal,
+} from "@/lib/bookings"
 
 export async function POST(req: Request) {
   const body = await req.text()
-  const signature = (await headers()).get("Stripe-Signature") as string
+  const signature = req.headers.get("stripe-signature")
+  const secret = process.env.STRIPE_WEBHOOK_SECRET
 
-  let event
+  if (!signature || !secret) {
+    return new NextResponse("Webhook not configured", { status: 400 })
+  }
+
+  let event: Stripe.Event
+  try {
+    event = stripe.webhooks.constructEvent(body, signature, secret)
+  } catch (error) {
+    return new NextResponse(`Webhook Error: ${(error as Error).message}`, { status: 400 })
+  }
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET || ""
-    )
-  } catch (error: any) {
-    return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 })
-  }
+    switch (event.type) {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded":
+        await fulfillStripeCheckoutSession(event.data.object)
+        break
 
-  const session = event.data.object as any
-
-  if (event.type === "checkout.session.completed") {
-    // Retrieve the subscription details from Stripe.
-    const customerId = session.customer as string
-    const metadata = session.metadata
-
-    if (metadata?.type === 'membership') {
-      // Handle membership subscription
-      await prisma.user.update({
-        where: { id: metadata.userId },
-        data: {
-          isMember: true,
-          stripeCustomerId: customerId,
-          subscriptionId: session.subscription,
-        },
-      })
-
-      const user = await prisma.user.findUnique({ where: { id: metadata.userId } })
-      await prisma.notification.create({
-        data: {
-          message: `New Membership Signup: ${user?.name || user?.email || 'Unknown User'} has subscribed.`
-        }
-      })
-    } else if (metadata?.type === 'booking') {
-      // Handle individual class booking
-      await prisma.booking.create({
-        data: {
-          userId: metadata.userId,
-          offeringSlug: metadata.offeringSlug,
-          startTime: new Date(metadata.startTime),
-          endTime: new Date(metadata.endTime),
-          pricePaid: parseFloat(metadata.pricePaid),
-          status: 'CONFIRMED',
-          stripeSessionId: session.id,
-        }
-      })
-
-      const user = await prisma.user.findUnique({ where: { id: metadata.userId } })
-      await prisma.notification.create({
-        data: {
-          message: `New Booking: ${user?.name || user?.email || 'Unknown User'} booked ${metadata.offeringSlug}.`
-        }
-      })
-
-      // Send confirmation email (Triggered here or via another queue)
-    }
-  }
-
-  if (event.type === "customer.subscription.deleted") {
-    // Handle membership cancellation
-    const subscription = event.data.object as any
-    await prisma.user.updateMany({
-      where: { subscriptionId: subscription.id },
-      data: { isMember: false, subscriptionId: null },
-    })
-
-    await prisma.notification.create({
-      data: {
-        message: `Membership Cancelled: A user has cancelled their subscription.`
+      case "invoice.paid": {
+        const sub = event.data.object.parent?.subscription_details?.subscription
+        const subscriptionId = typeof sub === "string" ? sub : sub?.id
+        if (subscriptionId) await syncSubscriptionRenewal(subscriptionId)
+        break
       }
-    })
+
+      case "customer.subscription.deleted":
+        endMembershipForSubscription(event.data.object.id)
+        break
+    }
+  } catch (error) {
+    console.error(`[STRIPE WEBHOOK] Failed handling ${event.type}:`, error)
+    // 500 makes Stripe retry; fulfilment is idempotent per checkout session.
+    return new NextResponse("Webhook handler failed", { status: 500 })
   }
 
-  return new NextResponse(null, { status: 200 })
+  return NextResponse.json({ received: true })
 }
