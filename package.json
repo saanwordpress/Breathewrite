@@ -15,6 +15,7 @@
     "@hookform/resolvers": "^5.4.0",
     "@prisma/client": "^6.4.1",
     "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.1.0",
     "@sanity/image-url": "^2.1.1",
     "@sanity/vision": "^6.3.0",
     "@supabase/ssr": "^0.12.0",
