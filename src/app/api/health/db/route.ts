@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   const url = process.env.DATABASE_URL || ''
   const shape = url
-    ? url.replace(/^([a-z]+:\/\/[^:/@]*)[^]*@/, '$1:***@')
+    ? url.replace(/(:\/\/[^:/@]*)[^]*@/, '$1:***@')
     : 'NOT SET'
   if (!prisma) return NextResponse.json({ ok: false, shape, error: 'prisma client is null' })
   try {
