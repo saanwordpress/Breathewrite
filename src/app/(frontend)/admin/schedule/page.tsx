@@ -27,29 +27,33 @@ export default async function SchedulePage() {
     redirect('/')
   }
 
-  // Fetch calendar events for current month
+  // Fetch calendar events for current month; all queries run in parallel.
   const now = new Date()
-  const calendarEvents = await getCalendarEvents(now.getFullYear(), now.getMonth() + 1, true)
-  const classTypes = await getClassTypes()
+  const db = prisma
+  const [calendarEvents, classTypes, dbSchedule] = await Promise.all([
+    getCalendarEvents(now.getFullYear(), now.getMonth() + 1, true),
+    getClassTypes(),
+    db
+      ? Promise.all([
+          db.availabilitySchedule.findMany(),
+          db.availabilityOverride.findMany({ where: { date: { gte: new Date() } }, orderBy: { date: 'asc' } }),
+        ]).catch((error) => error as Error)
+      : null,
+  ])
 
   let scheduleData = [...DEFAULT_SCHEDULE]
   let overridesData: any[] = []
 
-  if (prisma) {
+  if (dbSchedule) {
     try {
-      const fetchedSchedule = await prisma.availabilitySchedule.findMany()
+      if (dbSchedule instanceof Error) throw dbSchedule
+      const [fetchedSchedule, fetchedOverrides] = dbSchedule
       if (fetchedSchedule.length > 0) {
         scheduleData = DEFAULT_SCHEDULE.map(defaultDay => {
           const found = fetchedSchedule.find(s => s.dayOfWeek === defaultDay.dayOfWeek)
           return found ? found : defaultDay
         })
       }
-
-      const fetchedOverrides = await prisma.availabilityOverride.findMany({
-        where: { date: { gte: new Date() } },
-        orderBy: { date: 'asc' }
-      })
-      
       overridesData = fetchedOverrides
     } catch (error) {
       console.warn("Could not fetch schedule data from DB, using fallback:", error)
