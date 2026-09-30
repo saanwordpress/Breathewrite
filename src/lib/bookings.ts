@@ -84,7 +84,7 @@ async function doFulfillBooking({
     (await findUserBookingForEvent(userId, event.id))
   if (existing) return existing
 
-  const meeting = await ensureClassMeeting(event, customerEmail)
+  const meeting = await ensureClassMeeting(event)
 
   const booking = await createBooking({
     userId,

@@ -120,7 +120,7 @@ export default async function AdminDashboardPage({
           </div>
 
           <div className="space-y-8">
-             <SetupStatus googleResult={typeof sp.google === 'string' ? sp.google : undefined} />
+             <SetupStatus />
              <h2 className="text-2xl font-heading">Quick Actions</h2>
              <div className="bg-card border border-border rounded-3xl p-6 space-y-4">
                <Link href="/admin/members" className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors">

@@ -1,14 +1,11 @@
 import { prisma } from '@/lib/prisma'
 import {
   jsonCreateBooking,
-  jsonDeleteIntegration,
   jsonFindBooking,
   jsonFindUserBySubscription,
   jsonGetBookings,
   jsonGetCalendarEventById,
-  jsonGetIntegration,
   jsonGetUser,
-  jsonSaveIntegration,
   jsonSetEventMeetingIfEmpty,
   jsonUpdateUser,
   jsonUpsertUserByEmail,
@@ -329,35 +326,4 @@ export async function saveEventMeetingIfEmpty(eventId: string, m: MeetingInfo): 
     jsonSetEventMeetingIfEmpty(eventId, fields)
   }
   return getEventMeeting(eventId)
-}
-
-// ---------- Integrations (e.g. the admin's Google account) ----------
-
-export async function getIntegration(provider: string): Promise<{ refreshToken: string; accountEmail: string | null } | null> {
-  if (prisma) {
-    const row = await prisma.integrationCredential.findUnique({ where: { provider } })
-    return row ? { refreshToken: row.refreshToken, accountEmail: row.accountEmail } : null
-  }
-  const row = jsonGetIntegration(provider)
-  return row ? { refreshToken: row.refreshToken, accountEmail: row.accountEmail ?? null } : null
-}
-
-export async function saveIntegration(provider: string, data: { refreshToken: string; accountEmail: string | null }) {
-  if (prisma) {
-    await prisma.integrationCredential.upsert({
-      where: { provider },
-      create: { provider, ...data },
-      update: data,
-    })
-    return
-  }
-  jsonSaveIntegration(provider, data)
-}
-
-export async function deleteIntegration(provider: string) {
-  if (prisma) {
-    await prisma.integrationCredential.deleteMany({ where: { provider } })
-    return
-  }
-  jsonDeleteIntegration(provider)
 }

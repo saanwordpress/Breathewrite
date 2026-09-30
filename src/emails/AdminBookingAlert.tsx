@@ -59,8 +59,7 @@ export const AdminBookingAlertEmail = ({
             {startLink && joinLink ? (
               <>
                 <Text style={text}>
-                  <strong>{providerName} host link</strong>
-                  {providerName === 'Google Meet' ? ' (open it while signed in to the Google account connected in the admin dashboard)' : ''}:
+                  <strong>{providerName} host link</strong> (opens the meeting as host):
                 </Text>
                 <Link href={startLink} style={button}>
                   Start {providerName} Session (Host)
@@ -71,7 +70,7 @@ export const AdminBookingAlertEmail = ({
               </>
             ) : (
               <Text style={text}>
-                <strong>The online meeting could not be created automatically.</strong> Please create it manually and send the joining link to the customer, then check that Google (or Zoom) is connected on the admin dashboard.
+                <strong>The online meeting could not be created automatically.</strong> Please create it manually and send the joining link to the customer, then check the Zoom status on the admin dashboard.
               </Text>
             )}
           </Section>

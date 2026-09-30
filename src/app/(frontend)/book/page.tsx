@@ -5,7 +5,6 @@ import { auth } from '@/auth'
 import { getAccount } from '@/lib/store'
 import { findUserBookingForEvent, getMembership } from '@/lib/bookings'
 import { membershipCoversClass } from '@/lib/membership'
-import { activeMeetingProvider } from '@/lib/meetings'
 import { BookingWizard } from './BookingWizard'
 
 export const dynamic = 'force-dynamic'
@@ -53,7 +52,7 @@ export default async function BookPage({
           membershipOnly={wantsMembership && !eventId}
           isPast={event ? isClassPast(event.date, event.startTime) : false}
           canceled={sp.canceled === 'true'}
-          meetingLabel={activeMeetingProvider() === 'zoom' ? 'Zoom' : 'Google Meet'}
+          meetingLabel="Zoom"
           account={account?.email ? { name: account.name ?? '', email: account.email } : null}
           membership={membership}
           alreadyBooked={alreadyBooked}
