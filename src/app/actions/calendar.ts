@@ -18,6 +18,8 @@ export type CalendarEventData = {
   startTime: string  // "HH:MM"
   endTime: string    // "HH:MM"
   price: number
+  deliveryMode: 'ONLINE' | 'IN_PERSON'
+  location?: string | null
 }
 
 export type CalendarEventWithId = CalendarEventData & { 
@@ -52,6 +54,8 @@ export async function getCalendarEvents(year: number, month: number, adminView =
         startTime: e.startTime,
         endTime: e.endTime,
         price: e.price,
+        deliveryMode: e.deliveryMode === 'IN_PERSON' ? 'IN_PERSON' as const : 'ONLINE' as const,
+        location: e.location,
         isPublished: e.isPublished,
         bookingsCount: e._count.bookings,
       }))
@@ -65,11 +69,16 @@ export async function getCalendarEvents(year: number, month: number, adminView =
 }
 
 // Create or update a calendar event
-export async function upsertCalendarEvent(data: CalendarEventData): Promise<{ success: boolean; error?: string }> {
+export async function upsertCalendarEvent(input: CalendarEventData): Promise<{ success: boolean; error?: string }> {
   const session = await auth()
   // @ts-ignore
   if (!session?.user || session.user.role !== 'ADMIN') {
     throw new Error('Unauthorized')
+  }
+  const data: CalendarEventData = {
+    ...input,
+    deliveryMode: input.deliveryMode === 'IN_PERSON' ? 'IN_PERSON' : 'ONLINE',
+    location: input.deliveryMode === 'IN_PERSON' ? String(input.location ?? '').trim().slice(0, 300) || null : null,
   }
 
   if (prisma) {
@@ -87,6 +96,8 @@ export async function upsertCalendarEvent(data: CalendarEventData): Promise<{ su
             startTime: data.startTime,
             endTime: data.endTime,
             price: data.price,
+            deliveryMode: data.deliveryMode,
+            location: data.location || null,
           },
         })
       } else {
@@ -98,6 +109,8 @@ export async function upsertCalendarEvent(data: CalendarEventData): Promise<{ su
             startTime: data.startTime,
             endTime: data.endTime,
             price: data.price,
+            deliveryMode: data.deliveryMode,
+            location: data.location || null,
             isPublished: false,
           },
         })
@@ -203,6 +216,8 @@ export async function getCalendarEventById(id: string) {
           startTime: event.startTime,
           endTime: event.endTime,
           price: event.price,
+          deliveryMode: event.deliveryMode === 'IN_PERSON' ? 'IN_PERSON' as const : 'ONLINE' as const,
+          location: event.location,
           isPublished: event.isPublished,
           bookingsCount: event._count.bookings,
         }

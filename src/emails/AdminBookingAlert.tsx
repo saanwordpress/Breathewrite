@@ -14,6 +14,8 @@ interface AdminBookingAlertProps {
   startLink?: string;
   meetingId?: string;
   passcode?: string;
+  inPerson?: boolean;
+  location?: string;
 }
 
 export const AdminBookingAlertEmail = ({
@@ -29,6 +31,8 @@ export const AdminBookingAlertEmail = ({
   startLink,
   meetingId,
   passcode,
+  inPerson,
+  location,
 }: AdminBookingAlertProps) => {
   return (
     <Html>
@@ -52,11 +56,13 @@ export const AdminBookingAlertEmail = ({
               <Text style={detailText}><strong>Time:</strong> {time} (UK time)</Text>
               <Text style={detailText}><strong>Duration:</strong> {durationMins} minutes</Text>
               <Text style={detailText}><strong>Payment:</strong> {paymentLabel}</Text>
+              <Text style={detailText}><strong>Format:</strong> {inPerson ? 'In person' : `Online (${providerName})`}</Text>
+              {inPerson && location && <Text style={detailText}><strong>Location:</strong> {location}</Text>}
               {meetingId && <Text style={detailText}><strong>Meeting ID:</strong> {meetingId}</Text>}
               {passcode && <Text style={detailText}><strong>Passcode:</strong> {passcode}</Text>}
             </div>
 
-            {startLink && joinLink ? (
+            {inPerson ? null : startLink && joinLink ? (
               <>
                 <Text style={text}>
                   <strong>{providerName} host link</strong> (opens the meeting as host):

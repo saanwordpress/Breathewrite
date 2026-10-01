@@ -130,6 +130,8 @@ model CalendarEvent {
   endTime     String              // e.g. "11:00"
   price       Float    @default(0) // Price in GBP
   isPublished Boolean  @default(false) // Draft until admin clicks "Save Calendar"
+  deliveryMode String  @default("ONLINE") // "ONLINE" (Zoom link) or "IN_PERSON" (no meeting)
+  location    String?  // Venue/address for in-person classes
 
   // One online meeting per class, created on the first booking and shared by every attendee.
   meetingProvider String?

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Check, Loader2, Video, AlertCircle, Sparkles } from 'lucide-react'
+import { Check, Loader2, Video, AlertCircle, Sparkles, MapPin } from 'lucide-react'
 import { createCheckoutSession } from '@/app/actions/checkout'
 import { MEMBERSHIP_PRICE_GBP, type MembershipStatus } from '@/lib/membership'
 import { formatLongDate, formatTime12h, minutesBetween } from '@/lib/time'
@@ -15,6 +15,8 @@ type BookingEvent = {
   startTime: string
   endTime: string
   price: number
+  inPerson: boolean
+  location: string | null
 }
 
 type Props = {
@@ -110,9 +112,16 @@ export function BookingWizard({
           <Row label="Date" value={formatLongDate(event.date)} />
           <Row label="Time (UK)" value={`${formatTime12h(event.startTime)} – ${formatTime12h(event.endTime)}`} />
           <Row label="Duration" value={`${minutesBetween(event.startTime, event.endTime)} minutes`} />
-          <div className="flex items-center gap-2 text-sm text-muted-foreground font-light">
-            <Video className="w-4 h-4 shrink-0" /> Live on {meetingLabel}. Your joining link is emailed to you as soon as you book.
-          </div>
+          {event.inPerson ? (
+            <div className="flex items-start gap-2 text-sm text-muted-foreground font-light">
+              <MapPin className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>In person{event.location ? ` at ${event.location}` : ''}. Your confirmation is emailed to you as soon as you book.</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground font-light">
+              <Video className="w-4 h-4 shrink-0" /> Live on {meetingLabel}. Your joining link is emailed to you as soon as you book.
+            </div>
+          )}
           <div className="border-t border-border pt-4 flex justify-between font-medium">
             <span>Total</span>
             {isFreeForMember ? (
@@ -172,7 +181,9 @@ export function BookingWizard({
           <label className="block text-sm font-medium">
             Email address
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" className={`${input} mt-2`} />
-            <span className="block mt-2 text-xs font-light text-muted-foreground">Your {meetingLabel} link will be sent here.</span>
+            <span className="block mt-2 text-xs font-light text-muted-foreground">
+              {event?.inPerson ? 'Your booking confirmation will be sent here.' : `Your ${meetingLabel} link will be sent here.`}
+            </span>
           </label>
           <p className="flex items-start gap-2 text-xs text-muted-foreground font-light">
             <Sparkles className="w-4 h-4 shrink-0 text-[#5B8260]" />

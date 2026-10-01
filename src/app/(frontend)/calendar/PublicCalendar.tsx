@@ -14,6 +14,7 @@ type CalendarEvent = {
   endTime: string
   price: number
   bookingsCount: number
+  deliveryMode?: 'ONLINE' | 'IN_PERSON'
 }
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
@@ -217,6 +218,9 @@ export function PublicCalendar() {
                           <span className={`block text-[10px] md:text-xs font-medium truncate leading-tight ${eventPast ? 'text-foreground/50 line-through' : 'text-foreground/80'}`}>
                             {event.title}
                           </span>
+                          {event.deliveryMode === 'IN_PERSON' && (
+                            <span className="block text-[9px] md:text-[10px] uppercase tracking-wide text-foreground/60">In person</span>
+                          )}
                           {eventPast && (
                             <span className="block text-[9px] md:text-[10px] uppercase tracking-wide text-muted-foreground">Past</span>
                           )}

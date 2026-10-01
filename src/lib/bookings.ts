@@ -84,7 +84,8 @@ async function doFulfillBooking({
     (await findUserBookingForEvent(userId, event.id))
   if (existing) return existing
 
-  const meeting = await ensureClassMeeting(event)
+  const inPerson = event.deliveryMode === 'IN_PERSON'
+  const meeting = inPerson ? null : await ensureClassMeeting(event)
 
   const booking = await createBooking({
     userId,
@@ -116,6 +117,8 @@ async function doFulfillBooking({
     durationMins: durationMins > 0 ? durationMins : 60,
     paymentLabel,
     meeting,
+    inPerson,
+    location: event.location ?? null,
   })
 
   return booking

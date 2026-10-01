@@ -15,6 +15,8 @@ type CalendarEvent = {
   price: number
   isPublished: boolean
   bookingsCount: number
+  deliveryMode?: 'ONLINE' | 'IN_PERSON'
+  location?: string | null
 }
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
@@ -64,6 +66,8 @@ export function AdminCalendar({
   const [formStartTime, setFormStartTime] = useState('10:00')
   const [formEndTime, setFormEndTime] = useState('11:00')
   const [formPrice, setFormPrice] = useState(18)
+  const [formMode, setFormMode] = useState<'ONLINE' | 'IN_PERSON'>('ONLINE')
+  const [formLocation, setFormLocation] = useState('')
 
   // Fetch events when month changes
   useEffect(() => {
@@ -120,6 +124,8 @@ export function AdminCalendar({
     setFormStartTime('10:00')
     setFormEndTime(selectedCt ? calculateEndTime('10:00', selectedCt.duration) : '11:00')
     setFormPrice(selectedCt?.price ?? 18)
+    setFormMode('ONLINE')
+    setFormLocation('')
     setShowModal(true)
   }
 
@@ -138,6 +144,8 @@ export function AdminCalendar({
     setFormStartTime(event.startTime)
     setFormEndTime(event.endTime)
     setFormPrice(event.price)
+    setFormMode(event.deliveryMode === 'IN_PERSON' ? 'IN_PERSON' : 'ONLINE')
+    setFormLocation(event.location ?? '')
     setShowModal(true)
   }
 
@@ -183,6 +191,8 @@ export function AdminCalendar({
         startTime: formStartTime,
         endTime: formEndTime,
         price: formPrice,
+        deliveryMode: formMode,
+        location: formMode === 'IN_PERSON' ? formLocation : null,
       })
 
       if (res.success) {
@@ -341,6 +351,9 @@ export function AdminCalendar({
                       <span className="font-semibold">{event.startTime}–{event.endTime}</span>
                       <br />
                       <span className="font-medium">{event.title}</span>
+                      {event.deliveryMode === 'IN_PERSON' && (
+                        <span className="block text-[9px] uppercase tracking-wide opacity-80">In person</span>
+                      )}
                       {!event.isPublished && (
                         <span className="ml-1 text-amber-600">●</span>
                       )}
@@ -402,6 +415,40 @@ export function AdminCalendar({
                     value={formCustomTitle}
                     onChange={(e) => setFormCustomTitle(e.target.value)}
                     placeholder="e.g., Special Breathwork Session"
+                    className="w-full bg-white border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+              )}
+
+              {/* Format */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Class Format</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([['ONLINE', 'Online (Zoom)'], ['IN_PERSON', 'In person']] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setFormMode(value)}
+                      className={`rounded-xl border px-4 py-2.5 text-sm transition-colors ${formMode === value ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-white hover:border-primary/50'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {formMode === 'ONLINE' ? 'A Zoom link is created automatically and emailed on booking.' : 'No Zoom link — the confirmation email includes the location below.'}
+                </p>
+              </div>
+
+              {formMode === 'IN_PERSON' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Location / Address</label>
+                  <input
+                    type="text"
+                    value={formLocation}
+                    onChange={(e) => setFormLocation(e.target.value)}
+                    maxLength={300}
+                    placeholder="e.g., The Studio, 12 High Street, London"
                     className="w-full bg-white border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>

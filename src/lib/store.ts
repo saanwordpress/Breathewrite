@@ -44,6 +44,8 @@ export type BookingRecord = {
   meetingHostUrl: string | null
   meetingId: string | null
   meetingPassword: string | null
+  inPerson: boolean
+  location: string | null
 }
 
 export type NewBooking = {
@@ -162,7 +164,7 @@ type PrismaBookingWithEvent = {
   meetingHostUrl: string | null
   meetingId: string | null
   meetingPassword: string | null
-  calendarEvent: { title: string; date: Date; startTime: string; endTime: string } | null
+  calendarEvent: { title: string; date: Date; startTime: string; endTime: string; deliveryMode: string; location: string | null } | null
 }
 
 function fromPrisma(b: PrismaBookingWithEvent): BookingRecord {
@@ -180,10 +182,13 @@ function fromPrisma(b: PrismaBookingWithEvent): BookingRecord {
     meetingHostUrl: b.meetingHostUrl,
     meetingId: b.meetingId,
     meetingPassword: b.meetingPassword,
+    inPerson: b.calendarEvent?.deliveryMode === 'IN_PERSON',
+    location: b.calendarEvent?.location ?? null,
   }
 }
 
 function fromJson(b: NonNullable<ReturnType<typeof jsonFindBooking>>): BookingRecord {
+  const ev = b.calendarEventId ? jsonGetCalendarEventById(b.calendarEventId) : null
   return {
     id: b.id,
     userId: b.userId,
@@ -198,10 +203,12 @@ function fromJson(b: NonNullable<ReturnType<typeof jsonFindBooking>>): BookingRe
     meetingHostUrl: b.meetingHostUrl ?? null,
     meetingId: b.meetingId ?? null,
     meetingPassword: b.meetingPassword ?? null,
+    inPerson: ev?.deliveryMode === 'IN_PERSON',
+    location: ev?.location ?? null,
   }
 }
 
-const withEvent = { calendarEvent: { select: { title: true, date: true, startTime: true, endTime: true } } } as const
+const withEvent = { calendarEvent: { select: { title: true, date: true, startTime: true, endTime: true, deliveryMode: true, location: true } } } as const
 
 export async function getBookingById(id: string): Promise<(BookingRecord & { customerEmail: string | null }) | null> {
   if (prisma) {

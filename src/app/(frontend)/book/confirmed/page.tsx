@@ -38,6 +38,9 @@ function ClassSummary({ booking }: { booking: BookingRecord }) {
       <p className="text-sm text-foreground/80 font-light">
         {formatLongDate(booking.date)} · {formatTime12h(booking.startTime)} – {formatTime12h(booking.endTime)} (UK time)
       </p>
+      <p className="text-sm text-foreground/80 font-light">
+        {booking.inPerson ? `In person${booking.location ? ` · ${booking.location}` : ''}` : 'Online via Zoom'}
+      </p>
     </div>
   )
 }
@@ -74,7 +77,7 @@ export default async function BookingConfirmedPage({
         )}
         <p className="text-foreground/70 font-light">
           {booking
-            ? `A confirmation with your joining link has been emailed to ${maskEmail(result.email)}.`
+            ? `A confirmation${booking.inPerson ? '' : ' with your joining link'} has been emailed to ${maskEmail(result.email)}.`
             : `Your membership is active. Book any class on the calendar using ${maskEmail(result.email)} and it's included.`}
         </p>
       </Shell>
@@ -88,7 +91,7 @@ export default async function BookingConfirmedPage({
         <Shell title={sp.existing ? "You're already booked" : "You're booked!"}>
           <ClassSummary booking={booking} />
           <p className="text-foreground/70 font-light">
-            Your joining link has been emailed to {maskEmail(booking.customerEmail)}. Please check your inbox (and spam folder).
+            Your {booking.inPerson ? 'booking confirmation' : 'joining link'} has been emailed to {maskEmail(booking.customerEmail)}. Please check your inbox (and spam folder).
             {sp.membership === 'new' && ' Your monthly membership is now active too.'}
           </p>
         </Shell>

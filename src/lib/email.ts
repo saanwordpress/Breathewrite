@@ -23,6 +23,8 @@ export type BookingEmailDetails = {
   durationMins: number
   paymentLabel: string
   meeting: MeetingInfo | null
+  inPerson: boolean
+  location: string | null
 }
 
 export async function sendBookingEmails(details: BookingEmailDetails) {
@@ -53,13 +55,15 @@ export async function sendBookingEmails(details: BookingEmailDetails) {
         meetLink: meeting?.joinUrl,
         meetingId: meeting?.meetingId ?? undefined,
         passcode: meeting?.password ?? undefined,
+        inPerson: details.inPerson,
+        location: details.location ?? undefined,
       }),
     }),
     resend.emails.send({
       from: senderAddress(),
       to: [adminEmail],
       replyTo: customerEmail,
-      subject: `${meeting ? 'New Booking' : 'ACTION NEEDED – New Booking (no meeting link)'}: ${className} – ${customerName}`,
+      subject: `${meeting || details.inPerson ? 'New Booking' : 'ACTION NEEDED – New Booking (no meeting link)'}${details.inPerson ? ' (in person)' : ''}: ${className} – ${customerName}`,
       react: AdminBookingAlertEmail({
         customerName,
         customerEmail,
@@ -73,6 +77,8 @@ export async function sendBookingEmails(details: BookingEmailDetails) {
         startLink: meeting?.hostUrl,
         meetingId: meeting?.meetingId ?? undefined,
         passcode: meeting?.password ?? undefined,
+        inPerson: details.inPerson,
+        location: details.location ?? undefined,
       }),
     }),
   ])

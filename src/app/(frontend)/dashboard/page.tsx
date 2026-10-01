@@ -144,6 +144,10 @@ export default async function DashboardPage({
                       <span className="text-xs text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-full font-medium">
                         Completed
                       </span>
+                    ) : booking.inPerson ? (
+                      <span className="text-xs text-foreground/80 bg-muted/40 px-3 py-1.5 rounded-full font-medium text-right">
+                        In person{booking.location ? ` · ${booking.location}` : ''}
+                      </span>
                     ) : booking.meetingUrl ? (
                       <Button asChild size="sm" className="rounded-full bg-[#4A6FA5] hover:bg-[#3B5B88] text-white">
                         <a href={booking.meetingUrl} target="_blank" rel="noreferrer">

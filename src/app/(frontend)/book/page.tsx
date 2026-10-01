@@ -22,7 +22,10 @@ export default async function BookPage({
 
   const found = eventId ? await getCalendarEventById(eventId) : null
   const event = found && found.isPublished
-    ? { id: found.id, title: found.title, date: found.date, startTime: found.startTime, endTime: found.endTime, price: found.price }
+    ? {
+        id: found.id, title: found.title, date: found.date, startTime: found.startTime, endTime: found.endTime, price: found.price,
+        inPerson: found.deliveryMode === 'IN_PERSON', location: found.location ?? null,
+      }
     : null
 
   const session = await auth()

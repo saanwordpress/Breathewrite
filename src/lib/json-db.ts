@@ -9,6 +9,8 @@ export type CalendarEventData = {
   endTime: string    // "HH:MM"
   price: number
   isPublished: boolean
+  deliveryMode?: 'ONLINE' | 'IN_PERSON'
+  location?: string | null
   meetingProvider?: string
   meetingUrl?: string
   meetingHostUrl?: string
@@ -222,7 +224,7 @@ export function jsonGetCalendarEventById(id: string) {
   }
 }
 
-export function jsonUpsertCalendarEvent(event: { id?: string; title: string; date: string; startTime: string; endTime: string; price: number }) {
+export function jsonUpsertCalendarEvent(event: { id?: string; title: string; date: string; startTime: string; endTime: string; price: number; deliveryMode: 'ONLINE' | 'IN_PERSON'; location?: string | null }) {
   const db = readDb()
   const now = new Date().toISOString()
 
@@ -236,6 +238,8 @@ export function jsonUpsertCalendarEvent(event: { id?: string; title: string; dat
         startTime: event.startTime,
         endTime: event.endTime,
         price: event.price,
+        deliveryMode: event.deliveryMode,
+        location: event.location ?? null,
         updatedAt: now,
       }
     } else {
@@ -246,6 +250,8 @@ export function jsonUpsertCalendarEvent(event: { id?: string; title: string; dat
         startTime: event.startTime,
         endTime: event.endTime,
         price: event.price,
+        deliveryMode: event.deliveryMode,
+        location: event.location ?? null,
         isPublished: false,
         createdAt: now,
         updatedAt: now,
@@ -260,6 +266,8 @@ export function jsonUpsertCalendarEvent(event: { id?: string; title: string; dat
       startTime: event.startTime,
       endTime: event.endTime,
       price: event.price,
+      deliveryMode: event.deliveryMode,
+      location: event.location ?? null,
       isPublished: false,
       createdAt: now,
       updatedAt: now,

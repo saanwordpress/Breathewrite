@@ -11,6 +11,8 @@ interface BookingConfirmationProps {
   meetLink?: string;
   meetingId?: string;
   passcode?: string;
+  inPerson?: boolean;
+  location?: string;
 }
 
 export const BookingConfirmationEmail = ({
@@ -23,6 +25,8 @@ export const BookingConfirmationEmail = ({
   meetLink,
   meetingId,
   passcode,
+  inPerson,
+  location,
 }: BookingConfirmationProps) => {
   return (
     <Html>
@@ -44,11 +48,17 @@ export const BookingConfirmationEmail = ({
               <Text style={detailText}><strong>Date:</strong> {date}</Text>
               <Text style={detailText}><strong>Time:</strong> {time} (UK time)</Text>
               <Text style={detailText}><strong>Duration:</strong> {durationMins} minutes</Text>
+              {inPerson && <Text style={detailText}><strong>Format:</strong> In person</Text>}
+              {inPerson && location && <Text style={detailText}><strong>Location:</strong> {location}</Text>}
               {meetingId && <Text style={detailText}><strong>Meeting ID:</strong> {meetingId}</Text>}
               {passcode && <Text style={detailText}><strong>Passcode:</strong> {passcode}</Text>}
             </div>
 
-            {meetLink ? (
+            {inPerson ? (
+              <Text style={text}>
+                This is an in-person class. Please arrive 10 minutes early so we can start on time.
+              </Text>
+            ) : meetLink ? (
               <>
                 <Text style={text}>
                   Join your session on {providerName} using the link below:
@@ -67,7 +77,9 @@ export const BookingConfirmationEmail = ({
             )}
 
             <Text style={footerText}>
-              Please find a quiet, comfortable space where you won't be disturbed. We recommend wearing loose clothing and having a blanket nearby.
+              {inPerson
+                ? 'We recommend wearing loose, comfortable clothing.'
+                : "Please find a quiet, comfortable space where you won't be disturbed. We recommend wearing loose clothing and having a blanket nearby."}
             </Text>
           </Section>
         </Container>
