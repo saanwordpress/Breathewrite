@@ -25,6 +25,8 @@ export async function getClassTypes() {
           duration: ct.duration,
           color: ct.color,
           isActive: ct.isActive,
+          deliveryMode: ct.deliveryMode === 'IN_PERSON' ? 'IN_PERSON' as const : 'ONLINE' as const,
+          location: ct.location,
         }))
       }
     } catch (error) {
@@ -36,13 +38,29 @@ export async function getClassTypes() {
   return jsonGetClassTypes()
 }
 
-// Update a class type's price, duration, or color
-export async function updateClassType(id: string, data: { price?: number; duration?: number; color?: string; isActive?: boolean }): Promise<{ success: boolean; error?: string }> {
+type FormatInput = { deliveryMode?: 'ONLINE' | 'IN_PERSON'; location?: string | null }
+
+function normalizeFormat(input: FormatInput): FormatInput {
+  if (input.deliveryMode === undefined) return {}
+  const inPerson = input.deliveryMode === 'IN_PERSON'
+  return {
+    deliveryMode: inPerson ? 'IN_PERSON' : 'ONLINE',
+    location: inPerson ? String(input.location ?? '').trim().slice(0, 300) || null : null,
+  }
+}
+
+// Update a class type's price, duration, color or default format
+export async function updateClassType(
+  id: string,
+  input: { price?: number; duration?: number; color?: string; isActive?: boolean } & FormatInput
+): Promise<{ success: boolean; error?: string }> {
   const session = await auth()
   // @ts-ignore
   if (!session?.user || session.user.role !== 'ADMIN') {
     throw new Error('Unauthorized')
   }
+  const { deliveryMode: _m, location: _l, ...rest } = input
+  const data = { ...rest, ...normalizeFormat(input) }
 
   if (prisma) {
     try {
@@ -69,6 +87,8 @@ export async function updateClassType(id: string, data: { price?: number; durati
       price: data.price ?? current.price,
       duration: data.duration ?? current.duration,
       color: data.color ?? current.color,
+      deliveryMode: data.deliveryMode,
+      location: data.location,
     })
   }
 
@@ -79,12 +99,15 @@ export async function updateClassType(id: string, data: { price?: number; durati
 }
 
 // Add a new custom class type
-export async function addClassType(data: { name: string; price: number; duration: number; color: string }): Promise<{ success: boolean; error?: string }> {
+export async function addClassType(
+  input: { name: string; price: number; duration: number; color: string } & FormatInput
+): Promise<{ success: boolean; error?: string }> {
   const session = await auth()
   // @ts-ignore
   if (!session?.user || session.user.role !== 'ADMIN') {
     throw new Error('Unauthorized')
   }
+  const data = { ...input, ...normalizeFormat({ deliveryMode: input.deliveryMode ?? 'ONLINE', location: input.location }) }
 
   if (prisma) {
     try {
@@ -95,6 +118,8 @@ export async function addClassType(data: { name: string; price: number; duration
           duration: data.duration,
           color: data.color,
           isActive: true,
+          deliveryMode: data.deliveryMode,
+          location: data.location,
         },
       })
 
@@ -112,6 +137,8 @@ export async function addClassType(data: { name: string; price: number; duration
     price: data.price,
     duration: data.duration,
     color: data.color,
+    deliveryMode: data.deliveryMode,
+    location: data.location,
   })
 
   revalidatePath('/admin/pricing')

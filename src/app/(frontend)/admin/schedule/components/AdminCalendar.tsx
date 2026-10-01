@@ -124,8 +124,8 @@ export function AdminCalendar({
     setFormStartTime('10:00')
     setFormEndTime(selectedCt ? calculateEndTime('10:00', selectedCt.duration) : '11:00')
     setFormPrice(selectedCt?.price ?? 18)
-    setFormMode('ONLINE')
-    setFormLocation('')
+    setFormMode(selectedCt?.deliveryMode === 'IN_PERSON' ? 'IN_PERSON' : 'ONLINE')
+    setFormLocation(selectedCt?.location ?? '')
     setShowModal(true)
   }
 
@@ -164,6 +164,8 @@ export function AdminCalendar({
       if (ct) {
         setFormPrice(ct.price)
         setFormEndTime(calculateEndTime(formStartTime, ct.duration))
+        setFormMode(ct.deliveryMode === 'IN_PERSON' ? 'IN_PERSON' : 'ONLINE')
+        setFormLocation(ct.location ?? '')
       }
     }
   }

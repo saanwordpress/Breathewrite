@@ -12,9 +12,43 @@ type ClassType = {
   duration: number
   color: string
   isActive: boolean
+  deliveryMode?: 'ONLINE' | 'IN_PERSON'
+  location?: string | null
 }
 
+type Mode = 'ONLINE' | 'IN_PERSON'
+
 const PRESET_COLORS = ['#4A6FA5', '#E8A838', '#6B8E6B', '#9B6B9B', '#C4766E', '#8B7355', '#E06C75', '#56B6C2', '#C678DD', '#98C379']
+
+function FormatPicker({ mode, location, onMode, onLocation }: { mode: Mode; location: string; onMode: (m: Mode) => void; onLocation: (l: string) => void }) {
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-medium">Class Format</label>
+      <div className="grid grid-cols-2 gap-2">
+        {([['ONLINE', 'Online (Zoom)'], ['IN_PERSON', 'In person']] as const).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onMode(value)}
+            className={`rounded-xl border px-4 py-2.5 text-sm transition-colors ${mode === value ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-white hover:border-primary/50'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {mode === 'IN_PERSON' && (
+        <input
+          type="text"
+          value={location}
+          onChange={(e) => onLocation(e.target.value)}
+          maxLength={300}
+          placeholder="Location / address, e.g. The Studio, 12 High Street, London"
+          className="w-full bg-white border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+        />
+      )}
+    </div>
+  )
+}
 
 export function PricingManager({ initialClassTypes }: { initialClassTypes: ClassType[] }) {
   const [classTypes, setClassTypes] = useState<ClassType[]>(initialClassTypes)
@@ -26,6 +60,8 @@ export function PricingManager({ initialClassTypes }: { initialClassTypes: Class
   const [editPrice, setEditPrice] = useState(0)
   const [editDuration, setEditDuration] = useState(60)
   const [editColor, setEditColor] = useState('#4A6FA5')
+  const [editMode, setEditMode] = useState<Mode>('ONLINE')
+  const [editLocation, setEditLocation] = useState('')
 
   // New class state
   const [showAdd, setShowAdd] = useState(false)
@@ -33,20 +69,25 @@ export function PricingManager({ initialClassTypes }: { initialClassTypes: Class
   const [newPrice, setNewPrice] = useState(20)
   const [newDuration, setNewDuration] = useState(60)
   const [newColor, setNewColor] = useState('#56B6C2')
+  const [newMode, setNewMode] = useState<Mode>('ONLINE')
+  const [newLocation, setNewLocation] = useState('')
 
   const startEditing = (ct: ClassType) => {
     setEditingId(ct.id)
     setEditPrice(ct.price)
     setEditDuration(ct.duration)
     setEditColor(ct.color)
+    setEditMode(ct.deliveryMode === 'IN_PERSON' ? 'IN_PERSON' : 'ONLINE')
+    setEditLocation(ct.location ?? '')
   }
 
   const handleSave = (id: string) => {
     setMessage(null)
+    const location = editMode === 'IN_PERSON' ? editLocation.trim() || null : null
     startTransition(async () => {
-      const res = await updateClassType(id, { price: editPrice, duration: editDuration, color: editColor })
+      const res = await updateClassType(id, { price: editPrice, duration: editDuration, color: editColor, deliveryMode: editMode, location })
       if (res.success) {
-        setClassTypes(prev => prev.map(ct => ct.id === id ? { ...ct, price: editPrice, duration: editDuration, color: editColor } : ct))
+        setClassTypes(prev => prev.map(ct => ct.id === id ? { ...ct, price: editPrice, duration: editDuration, color: editColor, deliveryMode: editMode, location } : ct))
         setEditingId(null)
         setMessage({ type: 'success', text: 'Class updated successfully!' })
       } else {
@@ -68,7 +109,10 @@ export function PricingManager({ initialClassTypes }: { initialClassTypes: Class
     if (!newName.trim()) return
     setMessage(null)
     startTransition(async () => {
-      const res = await addClassType({ name: newName.trim(), price: newPrice, duration: newDuration, color: newColor })
+      const res = await addClassType({
+        name: newName.trim(), price: newPrice, duration: newDuration, color: newColor,
+        deliveryMode: newMode, location: newMode === 'IN_PERSON' ? newLocation : null,
+      })
       if (res.success) {
         setMessage({ type: 'success', text: 'New class type added!' })
         setShowAdd(false)
@@ -169,6 +213,9 @@ export function PricingManager({ initialClassTypes }: { initialClassTypes: Class
                   ))}
                 </div>
               </div>
+              <div className="md:col-span-2">
+                <FormatPicker mode={newMode} location={newLocation} onMode={setNewMode} onLocation={setNewLocation} />
+              </div>
             </div>
             <div className="flex gap-3 justify-end">
               <Button variant="outline" onClick={() => setShowAdd(false)} className="rounded-xl">Cancel</Button>
@@ -229,6 +276,9 @@ export function PricingManager({ initialClassTypes }: { initialClassTypes: Class
                       Cancel
                     </Button>
                   </div>
+                  <div className="md:col-span-4">
+                    <FormatPicker mode={editMode} location={editLocation} onMode={setEditMode} onLocation={setEditLocation} />
+                  </div>
                 </div>
               ) : (
                 // View mode
@@ -238,7 +288,7 @@ export function PricingManager({ initialClassTypes }: { initialClassTypes: Class
                     <div>
                       <h3 className="font-heading text-lg">{ct.name}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {ct.duration} mins • £{ct.price.toFixed(2)}
+                        {ct.duration} mins • £{ct.price.toFixed(2)} • {ct.deliveryMode === 'IN_PERSON' ? `In person${ct.location ? ` (${ct.location})` : ''}` : 'Online'}
                       </p>
                     </div>
                   </div>

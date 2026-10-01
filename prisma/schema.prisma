@@ -157,6 +157,8 @@ model ClassType {
   duration    Int      @default(60)  // Default duration in minutes
   color       String   @default("#4A6FA5") // Display color for calendar
   isActive    Boolean  @default(true)
+  deliveryMode String  @default("ONLINE") // Default format when this class is added to the calendar
+  location    String?  // Default venue for in-person classes
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

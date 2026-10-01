@@ -19,4 +19,6 @@ export type ClassTypeInfo = {
   duration: number
   color: string
   isActive: boolean
+  deliveryMode?: 'ONLINE' | 'IN_PERSON'
+  location?: string | null
 }

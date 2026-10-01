@@ -35,6 +35,8 @@ export type ClassTypeData = {
   duration: number
   color: string
   isActive: boolean
+  deliveryMode?: 'ONLINE' | 'IN_PERSON'
+  location?: string | null
 }
 
 export type ScheduleItemData = {
@@ -307,7 +309,10 @@ export function jsonGetClassTypes() {
   return db.classTypes.filter(ct => ct.isActive)
 }
 
-export function jsonUpsertClassType(data: { id?: string; name: string; price: number; duration?: number; color?: string }) {
+export function jsonUpsertClassType(data: {
+  id?: string; name: string; price: number; duration?: number; color?: string
+  deliveryMode?: 'ONLINE' | 'IN_PERSON'; location?: string | null
+}) {
   const db = readDb()
   if (data.id) {
     const idx = db.classTypes.findIndex(ct => ct.id === data.id)
@@ -318,6 +323,8 @@ export function jsonUpsertClassType(data: { id?: string; name: string; price: nu
         price: data.price,
         duration: data.duration ?? db.classTypes[idx].duration,
         color: data.color ?? db.classTypes[idx].color,
+        deliveryMode: data.deliveryMode ?? db.classTypes[idx].deliveryMode,
+        location: data.location !== undefined ? data.location : db.classTypes[idx].location,
       }
     }
   } else {
@@ -329,6 +336,8 @@ export function jsonUpsertClassType(data: { id?: string; name: string; price: nu
       duration: data.duration ?? 60,
       color: data.color ?? '#4A6FA5',
       isActive: true,
+      deliveryMode: data.deliveryMode ?? 'ONLINE',
+      location: data.location ?? null,
     })
   }
   writeDb(db)
