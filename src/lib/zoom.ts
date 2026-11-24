@@ -17,6 +17,37 @@ function mockMeeting(): ZoomMeetingResult {
   }
 }
 
+async function fetchZoomToken(accountId: string, clientId: string, clientSecret: string): Promise<{ access_token: string; scope?: string }> {
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+  const tokenRes = await fetch(
+    `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${encodeURIComponent(accountId)}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    }
+  )
+  if (!tokenRes.ok) {
+    throw new Error(`Zoom OAuth failed (${tokenRes.status}): ${await tokenRes.text()}`)
+  }
+  return tokenRes.json()
+}
+
+// Signs in to Zoom without creating anything, to confirm the credentials and meeting scope work.
+export async function checkZoomConnection(): Promise<{ ok: boolean; detail: string }> {
+  const { ZOOM_ACCOUNT_ID: a, ZOOM_CLIENT_ID: c, ZOOM_CLIENT_SECRET: s } = process.env
+  if (!a || !c || !s) return { ok: false, detail: 'Zoom credentials not set' }
+  try {
+    const { scope = '' } = await fetchZoomToken(a, c, s)
+    const canCreate = /meeting:write/.test(scope)
+    return { ok: canCreate, detail: canCreate ? 'Signed in; can create meetings' : `Signed in, but missing meeting:write scope (has: ${scope})` }
+  } catch (error) {
+    return { ok: false, detail: (error as Error).message.slice(0, 300) }
+  }
+}
+
 // Returns null when a real meeting could not be created, so callers never email a fake link in production.
 export async function createZoomMeeting({
   topic,
@@ -43,21 +74,7 @@ export async function createZoomMeeting({
   }
 
   try {
-    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
-    const tokenRes = await fetch(
-      `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${encodeURIComponent(accountId)}`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${credentials}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    )
-    if (!tokenRes.ok) {
-      throw new Error(`Zoom OAuth failed (${tokenRes.status}): ${await tokenRes.text()}`)
-    }
-    const { access_token } = await tokenRes.json()
+    const { access_token } = await fetchZoomToken(accountId, clientId, clientSecret)
 
     const hostUser = process.env.ZOOM_HOST_USER_ID || 'me'
     const meetingRes = await fetch(`https://api.zoom.us/v2/users/${encodeURIComponent(hostUser)}/meetings`, {
