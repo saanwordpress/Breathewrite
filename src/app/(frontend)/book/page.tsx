@@ -44,7 +44,7 @@ export default async function BookPage({
           </h1>
           <p className="text-foreground/70 font-light">
             {wantsMembership && !event
-              ? 'Create an account or log in, then pay securely with Stripe.'
+              ? 'Create an account or log in, then pay securely online.'
               : 'Single classes don’t need an account. Members: log in to book for free.'}
           </p>
         </div>

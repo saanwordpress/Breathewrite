@@ -2,17 +2,18 @@
 
 import { redirect } from "next/navigation"
 import { appBaseUrl } from "@/lib/url"
-import { stripe } from "@/lib/stripe"
+import { createCustomer, createPayment, gbp, updatePayment } from "@/lib/mollie"
 import { getCalendarEventById } from "@/app/actions/calendar"
 import {
   activateMembership,
   findUserBookingForEvent,
   fulfillBooking,
   getMembership,
-  isStripeConfigured,
+  isPaymentConfigured,
+  mollieWebhookUrl,
   oneMonthFromNow,
 } from "@/lib/bookings"
-import { getAccount, upsertCustomer } from "@/lib/store"
+import { getAccount, getMember, updateMember, upsertCustomer } from "@/lib/store"
 import { auth } from "@/auth"
 import { MEMBERSHIP_PRICE_GBP, membershipCoversClass } from "@/lib/membership"
 import { isClassPast, ukDateTimeToUtc, formatLongDate, formatTime12h } from "@/lib/time"
@@ -77,13 +78,13 @@ export async function createCheckoutSession(
     redirect('/book/confirmed?membership=active')
   }
 
-  if (!isStripeConfigured()) {
+  if (!isPaymentConfigured()) {
     if (process.env.NODE_ENV === 'production') {
-      console.error('[CHECKOUT] STRIPE_SECRET_KEY is not configured.')
+      console.error('[CHECKOUT] MOLLIE_API_KEY is not configured.')
       return { error: 'Online payments are temporarily unavailable. Please contact us to book.' }
     }
 
-    console.warn('[STRIPE DEV] No Stripe key configured — simulating a successful payment.')
+    console.warn('[PAYMENTS DEV] No Mollie key configured — simulating a successful payment.')
     if (wantsMembership) {
       await activateMembership(userId, oneMonthFromNow())
       if (!event) redirect('/book/confirmed?membership=new')
@@ -105,45 +106,34 @@ export async function createCheckoutSession(
 
   let checkoutUrl: string | null = null
   try {
-    const stripeSession = await stripe.checkout.sessions.create({
-      mode: wantsMembership ? 'subscription' : 'payment',
-      line_items: [
-        wantsMembership
-          ? {
-              price_data: {
-                currency: 'gbp',
-                product_data: {
-                  name: 'Breathe Write Monthly Membership',
-                  description: event
-                    ? `Unlimited online group classes. Includes ${event.title} on ${formatLongDate(event.date)}.`
-                    : 'Unlimited online group classes.',
-                },
-                unit_amount: MEMBERSHIP_PRICE_GBP * 100,
-                recurring: { interval: 'month' },
-              },
-              quantity: 1,
-            }
-          : {
-              price_data: {
-                currency: 'gbp',
-                product_data: {
-                  name: event!.title,
-                  description: `${formatLongDate(event!.date)}, ${formatTime12h(event!.startTime)} – ${formatTime12h(event!.endTime)} (UK time) · Live online`,
-                },
-                unit_amount: Math.round(event!.price * 100),
-              },
-              quantity: 1,
-            },
-      ],
-      customer_email: customerEmail,
+    // Memberships need a Mollie customer so the first payment can authorise the monthly repeat payments.
+    let customerId: string | undefined
+    if (wantsMembership) {
+      customerId = (await getMember(userId))?.paymentCustomerId ?? undefined
+      if (!customerId) {
+        customerId = (await createCustomer(customerName, customerEmail, { userId })).id
+        await updateMember(userId, { paymentCustomerId: customerId })
+      }
+    }
+
+    const payment = await createPayment({
+      amount: gbp(wantsMembership ? MEMBERSHIP_PRICE_GBP : event!.price),
+      description: wantsMembership
+        ? event
+          ? `Breathe Write Monthly Membership (includes ${event.title} on ${formatLongDate(event.date)})`
+          : 'Breathe Write Monthly Membership'
+        : `${event!.title}, ${formatLongDate(event!.date)}, ${formatTime12h(event!.startTime)} (UK time)`,
+      ...(wantsMembership ? { customerId, sequenceType: 'first' } : {}),
+      // Replaced below once the payment id is known, so the confirmation page can look the payment up.
+      redirectUrl: `${baseUrl}/book/confirmed`,
+      cancelUrl: event ? `${baseUrl}/book?eventId=${event.id}&canceled=true` : `${baseUrl}/book?membership=true&canceled=true`,
+      webhookUrl: mollieWebhookUrl(baseUrl),
       metadata,
-      ...(wantsMembership ? { subscription_data: { metadata: { userId } } } : { payment_intent_data: { metadata } }),
-      success_url: `${baseUrl}/book/confirmed?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: event ? `${baseUrl}/book?eventId=${event.id}&canceled=true` : `${baseUrl}/book?membership=true&canceled=true`,
     })
-    checkoutUrl = stripeSession.url
+    await updatePayment(payment.id, { redirectUrl: `${baseUrl}/book/confirmed?payment_id=${payment.id}` })
+    checkoutUrl = payment._links.checkout?.href ?? null
   } catch (error) {
-    console.error('[CHECKOUT] Stripe session creation failed:', error)
+    console.error('[CHECKOUT] Mollie payment creation failed:', error)
   }
 
   if (!checkoutUrl) return { error: 'We could not start the payment. Please try again in a moment.' }

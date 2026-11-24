@@ -27,7 +27,8 @@ export type MemberRecord = {
   id: string
   isMember: boolean
   membershipExpiresAt: string | null
-  stripeCustomerId: string | null
+  paymentCustomerId: string | null
+  subscriptionId: string | null
 }
 
 export type BookingRecord = {
@@ -60,7 +61,7 @@ export type NewBooking = {
   endUtc: Date
   pricePaid: number
   customerEmail: string
-  stripeSessionId?: string
+  paymentId?: string
   meeting: MeetingInfo | null
 }
 
@@ -117,19 +118,19 @@ export async function getMember(userId: string): Promise<MemberRecord | null> {
   if (prisma) {
     const u = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, isMember: true, membershipExpiresAt: true, stripeCustomerId: true },
+      select: { id: true, isMember: true, membershipExpiresAt: true, paymentCustomerId: true, subscriptionId: true },
     })
     return u ? { ...u, membershipExpiresAt: u.membershipExpiresAt?.toISOString() ?? null } : null
   }
   const u = jsonGetUser(userId)
   return u
-    ? { id: u.id, isMember: u.isMember, membershipExpiresAt: u.membershipExpiresAt ?? null, stripeCustomerId: u.stripeCustomerId ?? null }
+    ? { id: u.id, isMember: u.isMember, membershipExpiresAt: u.membershipExpiresAt ?? null, paymentCustomerId: u.paymentCustomerId ?? null, subscriptionId: u.subscriptionId ?? null }
     : null
 }
 
 export async function updateMember(
   userId: string,
-  patch: { isMember?: boolean; membershipExpiresAt?: Date; stripeCustomerId?: string; subscriptionId?: string | null }
+  patch: { isMember?: boolean; membershipExpiresAt?: Date; paymentCustomerId?: string; subscriptionId?: string | null }
 ) {
   if (prisma) {
     await prisma.user.update({ where: { id: userId }, data: patch })
@@ -138,7 +139,7 @@ export async function updateMember(
   jsonUpdateUser(userId, {
     ...(patch.isMember !== undefined && { isMember: patch.isMember }),
     ...(patch.membershipExpiresAt && { membershipExpiresAt: patch.membershipExpiresAt.toISOString() }),
-    ...(patch.stripeCustomerId && { stripeCustomerId: patch.stripeCustomerId }),
+    ...(patch.paymentCustomerId && { paymentCustomerId: patch.paymentCustomerId }),
     ...(patch.subscriptionId !== undefined && { subscriptionId: patch.subscriptionId ?? undefined }),
   })
 }
@@ -219,12 +220,12 @@ export async function getBookingById(id: string): Promise<(BookingRecord & { cus
   return b ? { ...fromJson(b), customerEmail: b.customerEmail ?? null } : null
 }
 
-export async function findBookingByStripeSession(stripeSessionId: string): Promise<BookingRecord | null> {
+export async function findBookingByPaymentId(paymentId: string): Promise<BookingRecord | null> {
   if (prisma) {
-    const b = await prisma.booking.findUnique({ where: { stripeSessionId }, include: withEvent })
+    const b = await prisma.booking.findUnique({ where: { paymentId }, include: withEvent })
     return b ? fromPrisma(b) : null
   }
-  const b = jsonFindBooking(x => x.stripeSessionId === stripeSessionId)
+  const b = jsonFindBooking(x => x.paymentId === paymentId)
   return b ? fromJson(b) : null
 }
 
@@ -257,7 +258,7 @@ export async function createBooking(data: NewBooking): Promise<BookingRecord> {
         endTime: data.endUtc,
         pricePaid: data.pricePaid,
         status: 'CONFIRMED',
-        stripeSessionId: data.stripeSessionId,
+        paymentId: data.paymentId,
         customerEmail: data.customerEmail,
         ...meeting,
       },
@@ -276,7 +277,7 @@ export async function createBooking(data: NewBooking): Promise<BookingRecord> {
       endTime: data.endTime,
       pricePaid: data.pricePaid,
       status: 'CONFIRMED',
-      stripeSessionId: data.stripeSessionId,
+      paymentId: data.paymentId,
       customerEmail: data.customerEmail,
       ...meeting,
     })

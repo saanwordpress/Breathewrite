@@ -52,7 +52,7 @@ export default function MembershipPage() {
               <Link href="/book?membership=true">Become a Member</Link>
             </Button>
             <p className="text-center text-xs text-muted-foreground mt-6 font-light">
-              Secure payment via Stripe. Cancel your subscription anytime from your member dashboard.
+              Secure payment via Mollie. Cancel anytime from your member dashboard.
             </p>
           </div>
         </div>
@@ -69,7 +69,7 @@ export default function MembershipPage() {
             </div>
             <div className="bg-muted/30 p-8 rounded-2xl">
               <h3 className="text-xl font-medium mb-3">Can I cancel anytime?</h3>
-              <p className="font-light text-foreground/80 leading-relaxed">Yes, you have full control over your subscription through the Stripe Customer Portal in your dashboard. You can cancel or pause with one click.</p>
+              <p className="font-light text-foreground/80 leading-relaxed">Yes. Cancel from your member dashboard at any time. You won't be charged again, and you keep access until the end of the month you've paid for.</p>
             </div>
           </div>
         </div>

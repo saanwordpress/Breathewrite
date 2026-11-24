@@ -48,8 +48,8 @@ model User {
   // Membership
   isMember      Boolean   @default(false)
   membershipExpiresAt DateTime?
-  stripeCustomerId String? @unique
-  subscriptionId   String? @unique
+  paymentCustomerId String? @unique @map("stripeCustomerId") // Mollie customer (cst_…)
+  subscriptionId   String? @unique // Mollie subscription (sub_…)
   
   accounts      Account[]
   sessions      Session[]
@@ -96,7 +96,7 @@ model Booking {
   endTime         DateTime
   pricePaid       Float     @default(0) // 0 if member
   status          BookingStatus @default(PENDING)
-  stripeSessionId String?   @unique
+  paymentId       String?   @unique @map("stripeSessionId") // Mollie payment (tr_…)
   calendarEventId String?
   customerEmail   String?
   meetingUrl      String?

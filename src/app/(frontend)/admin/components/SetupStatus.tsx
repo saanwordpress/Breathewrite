@@ -1,6 +1,6 @@
 import { CheckCircle2, Circle } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
-import { isStripeConfigured } from '@/lib/bookings'
+import { isMollieConfigured, isMollieTestMode } from '@/lib/mollie'
 import { primaryAdminEmail } from '@/lib/admin'
 
 function Item({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
@@ -24,9 +24,9 @@ export function SetupStatus() {
       <ul className="space-y-4">
         <Item ok={!!prisma} label="Database (Supabase)" detail={prisma ? 'Connected' : 'DATABASE_URL not set — bookings are not saved permanently'} />
         <Item
-          ok={isStripeConfigured() && !!process.env.STRIPE_WEBHOOK_SECRET}
-          label="Stripe payments"
-          detail={!isStripeConfigured() ? 'STRIPE_SECRET_KEY not set' : !process.env.STRIPE_WEBHOOK_SECRET ? 'STRIPE_WEBHOOK_SECRET not set' : 'Ready'}
+          ok={isMollieConfigured() && !isMollieTestMode()}
+          label="Mollie payments"
+          detail={!isMollieConfigured() ? 'MOLLIE_API_KEY not set' : isMollieTestMode() ? 'Test key in use: no real payments' : 'Ready'}
         />
         <Item
           ok={zoomReady}

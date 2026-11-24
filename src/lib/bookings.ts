@@ -1,14 +1,22 @@
-import type Stripe from 'stripe'
-import { stripe } from '@/lib/stripe'
+import {
+  cancelSubscription,
+  createSubscription,
+  getPayment,
+  getSubscription,
+  gbp,
+  isMollieConfigured,
+  listSubscriptions,
+  type MolliePayment,
+} from '@/lib/mollie'
 import { sendBookingEmails } from '@/lib/email'
 import { ensureClassMeeting } from '@/lib/meetings'
 import { formatLongDate, formatTime12h, minutesBetween, ukDateTimeToUtc } from '@/lib/time'
-import type { MembershipStatus } from '@/lib/membership'
+import { MEMBERSHIP_PRICE_GBP, type MembershipStatus } from '@/lib/membership'
 import { getCalendarEventById } from '@/app/actions/calendar'
 import {
   addAdminNotification,
   createBooking,
-  findBookingByStripeSession,
+  findBookingByPaymentId,
   findMemberIdBySubscription,
   findUserBookingForEvent,
   getMember,
@@ -20,10 +28,7 @@ export { findUserBookingForEvent }
 
 export type BookableEvent = NonNullable<Awaited<ReturnType<typeof getCalendarEventById>>>
 
-export function isStripeConfigured(): boolean {
-  const key = process.env.STRIPE_SECRET_KEY || ''
-  return key.startsWith('sk_') && !key.includes('dummyKey') && !key.includes('placeholder')
-}
+export const isPaymentConfigured = isMollieConfigured
 
 export async function getMembership(userId: string): Promise<MembershipStatus> {
   const user = await getMember(userId)
@@ -42,9 +47,9 @@ export function oneMonthFromNow(): Date {
 export async function activateMembership(
   userId: string,
   expiresAt: Date,
-  stripeIds: { stripeCustomerId?: string; subscriptionId?: string } = {}
+  paymentIds: { paymentCustomerId?: string; subscriptionId?: string } = {}
 ) {
-  await updateMember(userId, { isMember: true, membershipExpiresAt: expiresAt, ...stripeIds })
+  await updateMember(userId, { isMember: true, membershipExpiresAt: expiresAt, ...paymentIds })
 }
 
 // Guards against the webhook and the success-page sync fulfilling the same checkout at once.
@@ -57,11 +62,11 @@ type FulfillArgs = {
   event: BookableEvent
   pricePaid: number
   paymentLabel: string
-  stripeSessionId?: string
+  paymentId?: string
 }
 
 export async function fulfillBooking(args: FulfillArgs): Promise<BookingRecord> {
-  const key = args.stripeSessionId ?? `${args.userId}:${args.event.id}`
+  const key = args.paymentId ?? `${args.userId}:${args.event.id}`
   const pending = inFlight.get(key)
   if (pending) return pending
 
@@ -77,10 +82,10 @@ async function doFulfillBooking({
   event,
   pricePaid,
   paymentLabel,
-  stripeSessionId,
+  paymentId,
 }: FulfillArgs): Promise<BookingRecord> {
   const existing =
-    (stripeSessionId && (await findBookingByStripeSession(stripeSessionId))) ||
+    (paymentId && (await findBookingByPaymentId(paymentId))) ||
     (await findUserBookingForEvent(userId, event.id))
   if (existing) return existing
 
@@ -99,7 +104,7 @@ async function doFulfillBooking({
     endUtc: ukDateTimeToUtc(event.date, event.endTime),
     pricePaid,
     customerEmail,
-    stripeSessionId,
+    paymentId,
     meeting,
   })
 
@@ -124,39 +129,87 @@ async function doFulfillBooking({
   return booking
 }
 
-async function subscriptionPeriodEnd(subscriptionId: string): Promise<{ end: Date; userId?: string; customerId?: string }> {
-  const sub = await stripe.subscriptions.retrieve(subscriptionId)
-  const endSecs = sub.items.data[0]?.current_period_end
-  return {
-    end: endSecs ? new Date(endSecs * 1000) : oneMonthFromNow(),
-    userId: sub.metadata?.userId,
-    customerId: typeof sub.customer === 'string' ? sub.customer : sub.customer?.id,
-  }
+// Members keep access for a few days past the renewal date, so a slow or retried renewal doesn't lock them out.
+const MEMBERSHIP_GRACE_DAYS = 3
+
+function ymd(d: Date): string {
+  return d.toISOString().slice(0, 10)
 }
 
-export async function fulfillStripeCheckoutSession(session: Stripe.Checkout.Session) {
-  if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') return
+function expiryWithGrace(renewalDate: string): Date {
+  const d = new Date(`${renewalDate}T23:59:59Z`)
+  d.setUTCDate(d.getUTCDate() + MEMBERSHIP_GRACE_DAYS)
+  return d
+}
 
-  const meta = session.metadata || {}
+// Mollie must be able to reach the webhook, so it is left out when running on localhost.
+export function mollieWebhookUrl(baseUrl: string): string | undefined {
+  return /\/\/(localhost|127\.0\.0\.1)/.test(baseUrl) ? undefined : `${baseUrl}/api/webhooks/mollie`
+}
+
+// After the first membership payment: set up the monthly repeat payment (once) and activate the membership.
+async function startMembershipSubscription(userId: string, payment: MolliePayment, baseUrl: string): Promise<boolean> {
+  const customerId = payment.customerId
+  if (!customerId) throw new Error(`Membership payment ${payment.id} has no Mollie customer`)
+
+  const existing = (await listSubscriptions(customerId)).find(s => s.status === 'active' || s.status === 'pending')
+  const startDate = ymd(oneMonthFromNow())
+  const subscription =
+    existing ??
+    (await createSubscription(
+      customerId,
+      {
+        amount: gbp(MEMBERSHIP_PRICE_GBP),
+        interval: '1 month',
+        startDate,
+        // Mollie requires a description that is unique per customer.
+        description: `Breathe Write Monthly Membership (from ${startDate})`,
+        webhookUrl: mollieWebhookUrl(baseUrl),
+        metadata: { type: 'membership-renewal', userId },
+      },
+      `subscription-${payment.id}`
+    ))
+
+  await activateMembership(userId, expiryWithGrace(subscription.nextPaymentDate ?? startDate), {
+    paymentCustomerId: customerId,
+    subscriptionId: subscription.id,
+  })
+  return !existing
+}
+
+async function renewMembership(payment: MolliePayment) {
+  const { customerId, subscriptionId } = payment
+  if (!customerId || !subscriptionId) return
+  const subscription = await getSubscription(customerId, subscriptionId)
+  const userId = subscription.metadata?.userId || (await findMemberIdBySubscription(subscriptionId))
+  if (!userId) return console.error(`[MOLLIE] No member found for subscription ${subscriptionId}`)
+  const renewal = subscription.nextPaymentDate ?? ymd(oneMonthFromNow())
+  await activateMembership(userId, expiryWithGrace(renewal), { paymentCustomerId: customerId, subscriptionId })
+}
+
+// Called by the webhook and by the confirmation page. Safe to run more than once for the same payment.
+export async function fulfillMolliePayment(payment: MolliePayment, baseUrl: string) {
+  if (payment.status !== 'paid') return
+
+  if (payment.sequenceType === 'recurring' && payment.subscriptionId) {
+    await renewMembership(payment)
+    return
+  }
+
+  const meta = payment.metadata || {}
   const userId = meta.userId
   if (!userId) return
-
-  const customerEmail = meta.customerEmail || session.customer_details?.email || ''
-  const customerName = meta.customerName || session.customer_details?.name || 'Valued Customer'
+  const customerEmail = meta.customerEmail || ''
+  const customerName = meta.customerName || 'Valued Customer'
 
   if (meta.type === 'membership') {
-    const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id
-    const { end, customerId } = subscriptionId
-      ? await subscriptionPeriodEnd(subscriptionId)
-      : { end: oneMonthFromNow(), customerId: undefined }
-    await activateMembership(userId, end, { stripeCustomerId: customerId, subscriptionId })
-
+    const isNew = await startMembershipSubscription(userId, payment, baseUrl)
     if (!meta.eventId) {
-      await addAdminNotification(`New Membership: ${customerName} (${customerEmail}) joined the monthly membership.`)
+      if (isNew) await addAdminNotification(`New Membership: ${customerName} (${customerEmail}) joined the monthly membership.`)
       return
     }
     const event = await getCalendarEventById(meta.eventId)
-    if (!event) return console.error(`[CHECKOUT] Event ${meta.eventId} not found for membership session ${session.id}`)
+    if (!event) return console.error(`[CHECKOUT] Event ${meta.eventId} not found for membership payment ${payment.id}`)
     await fulfillBooking({
       userId,
       customerEmail,
@@ -164,64 +217,62 @@ export async function fulfillStripeCheckoutSession(session: Stripe.Checkout.Sess
       event,
       pricePaid: 0,
       paymentLabel: 'Included with new monthly membership',
-      stripeSessionId: session.id,
+      paymentId: payment.id,
     })
     return
   }
 
   if (meta.type === 'booking' && meta.eventId) {
     const event = await getCalendarEventById(meta.eventId)
-    if (!event) return console.error(`[CHECKOUT] Event ${meta.eventId} not found for session ${session.id}`)
-    const pricePaid = (session.amount_total ?? 0) / 100
+    if (!event) return console.error(`[CHECKOUT] Event ${meta.eventId} not found for payment ${payment.id}`)
+    const pricePaid = Number(payment.amount.value)
     await fulfillBooking({
       userId,
       customerEmail,
       customerName,
       event,
       pricePaid,
-      paymentLabel: `Paid £${pricePaid.toFixed(2)} via Stripe`,
-      stripeSessionId: session.id,
+      paymentLabel: `Paid £${pricePaid.toFixed(2)} online`,
+      paymentId: payment.id,
     })
   }
 }
 
-export async function syncSubscriptionRenewal(subscriptionId: string) {
-  const { end, userId, customerId } = await subscriptionPeriodEnd(subscriptionId)
-  const ownerId = userId || (await findMemberIdBySubscription(subscriptionId))
-  if (!ownerId) return
-  await activateMembership(ownerId, end, { stripeCustomerId: customerId, subscriptionId })
-}
-
-export async function endMembershipForSubscription(subscriptionId: string) {
-  const userId = await findMemberIdBySubscription(subscriptionId)
-  if (userId) await updateMember(userId, { isMember: false, subscriptionId: null })
-}
-
-// Runs on the success page too, in case the customer returns before (or without) the webhook.
-export async function confirmCheckoutSession(sessionId: string): Promise<{ type: string; booking: BookingRecord | null; email: string } | null> {
-  if (!isStripeConfigured() || !sessionId.startsWith('cs_')) return null
+// Runs on the confirmation page too, in case the customer returns before the webhook arrives.
+export async function confirmPayment(
+  paymentId: string,
+  baseUrl: string
+): Promise<{ type: string; booking: BookingRecord | null; email: string } | null> {
+  if (!isPaymentConfigured() || !/^tr_\w+$/.test(paymentId)) return null
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId)
-    await fulfillStripeCheckoutSession(session)
-    const paid = session.payment_status === 'paid' || session.payment_status === 'no_payment_required'
+    const payment = await getPayment(paymentId)
+    await fulfillMolliePayment(payment, baseUrl)
+    const waiting = payment.status === 'open' || payment.status === 'pending' || payment.status === 'authorized'
     return {
-      type: paid ? session.metadata?.type ?? 'booking' : 'unpaid',
-      booking: await findBookingByStripeSession(session.id),
-      email: session.metadata?.customerEmail || session.customer_details?.email || '',
+      type: payment.status === 'paid' ? payment.metadata?.type ?? 'booking' : waiting ? 'pending' : 'failed',
+      booking: await findBookingByPaymentId(payment.id),
+      email: payment.metadata?.customerEmail || '',
     }
   } catch (err) {
-    console.error('[CHECKOUT] Could not confirm session on return:', err)
+    console.error('[CHECKOUT] Could not confirm payment on return:', err)
     return null
   }
 }
 
-export async function createBillingPortalUrl(stripeCustomerId: string, returnUrl: string): Promise<string | null> {
-  if (!isStripeConfigured()) return null
+// Stops future monthly payments. The member keeps access until the end of the period already paid for.
+export async function cancelMembership(userId: string): Promise<boolean> {
+  const member = await getMember(userId)
+  if (!member?.paymentCustomerId || !member.subscriptionId) return false
   try {
-    const portal = await stripe.billingPortal.sessions.create({ customer: stripeCustomerId, return_url: returnUrl })
-    return portal.url
+    await cancelSubscription(member.paymentCustomerId, member.subscriptionId)
   } catch (err) {
-    console.error('[STRIPE] Billing portal error:', err)
-    return null
+    // Already cancelled in Mollie (e.g. from the Mollie dashboard) is fine; anything else is a real failure.
+    if (!/\((404|410|422)\)/.test((err as Error).message)) {
+      console.error('[MOLLIE] Cancel subscription failed:', err)
+      return false
+    }
   }
+  await updateMember(userId, { subscriptionId: null })
+  await addAdminNotification(`Membership cancelled: member ${userId} cancelled their monthly membership (access until it expires).`)
+  return true
 }

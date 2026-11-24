@@ -139,9 +139,9 @@ export default async function AdminDashboardPage({
                  <Settings className="w-5 h-5 text-muted-foreground" />
                  <span>Settings &amp; Password</span>
                </Link>
-               <a href="https://dashboard.stripe.com" target="_blank" rel="noreferrer" className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors">
+               <a href="https://my.mollie.com/dashboard" target="_blank" rel="noreferrer" className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors">
                  <DollarSign className="w-5 h-5 text-muted-foreground" />
-                 <span>Stripe Dashboard</span>
+                 <span>Mollie Dashboard</span>
                </a>
              </div>
              

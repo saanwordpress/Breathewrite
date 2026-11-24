@@ -3,9 +3,8 @@ import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { listUserBookings, getMember } from "@/lib/store"
-import { createBillingPortalUrl, getMembership } from "@/lib/bookings"
+import { cancelMembership, getMembership } from "@/lib/bookings"
 import { meetingProviderName } from "@/lib/meetings"
-import { appBaseUrl } from "@/lib/url"
 import { formatLongDate, formatTime12h, isClassPast } from "@/lib/time"
 import { Video, Calendar, Sparkles, CheckCircle2 } from "lucide-react"
 
@@ -30,7 +29,9 @@ export default async function DashboardPage({
   const membership = userId ? await getMembership(userId) : { active: false, expiresAt: null }
   const isMember = membership.active
   const memberUntil = membership.expiresAt ? formatLongDate(membership.expiresAt.slice(0, 10)) : null
-  const stripeCustomerId = isMember && userId ? (await getMember(userId))?.stripeCustomerId : null
+  const member = isMember && userId ? await getMember(userId) : null
+  const canCancel = !!(member?.paymentCustomerId && member.subscriptionId)
+  const cancelled = !!(member?.paymentCustomerId && !member.subscriptionId)
 
   const userBookings = (userId ? await listUserBookings(userId) : [])
     .map(b => ({ ...b, isPast: isClassPast(b.date, b.endTime || b.startTime) }))
@@ -49,6 +50,10 @@ export default async function DashboardPage({
       ? "You're already booked into that class. Your joining link is below."
       : sp.membership === 'active'
       ? 'Your membership is already active.'
+      : sp.membership === 'cancelled'
+      ? `Your membership has been cancelled. You won't be charged again${memberUntil ? `, and you can keep booking classes until ${memberUntil}` : ''}.`
+      : sp.membership === 'cancel-failed'
+      ? "We couldn't cancel your membership just now. Please try again, or email info@breathewrite.co.uk and we'll cancel it for you."
       : null
 
   return (
@@ -179,18 +184,33 @@ export default async function DashboardPage({
                   <Button asChild variant="secondary" className="w-full rounded-full">
                     <Link href="/calendar">Book Class for £0</Link>
                   </Button>
-                  {stripeCustomerId && (
-                    <form
-                      action={async () => {
-                        "use server"
-                        const url = await createBillingPortalUrl(stripeCustomerId, `${await appBaseUrl()}/dashboard`)
-                        redirect(url ?? '/dashboard')
-                      }}
-                    >
-                      <Button type="submit" variant="ghost" className="w-full rounded-full mt-3 text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10">
-                        Manage or cancel membership
-                      </Button>
-                    </form>
+                  {canCancel && (
+                    // Two steps (open, then confirm) so the membership can't be cancelled by a stray click.
+                    <details className="mt-3 text-center">
+                      <summary className="cursor-pointer list-none rounded-full py-2 text-sm text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10">
+                        Cancel membership
+                      </summary>
+                      <form
+                        className="mt-3 space-y-3"
+                        action={async () => {
+                          "use server"
+                          const ok = await cancelMembership(userId!)
+                          redirect(ok ? '/dashboard?membership=cancelled' : '/dashboard?membership=cancel-failed')
+                        }}
+                      >
+                        <p className="text-xs font-light text-primary-foreground/80">
+                          You won&rsquo;t be charged again{memberUntil ? ` and keep access until ${memberUntil}` : ''}.
+                        </p>
+                        <Button type="submit" variant="secondary" className="w-full rounded-full">
+                          Yes, cancel my membership
+                        </Button>
+                      </form>
+                    </details>
+                  )}
+                  {cancelled && (
+                    <p className="mt-4 text-center text-xs font-light text-primary-foreground/80">
+                      Cancelled. You won&rsquo;t be charged again.
+                    </p>
                   )}
                 </>
               ) : (

@@ -233,7 +233,7 @@ export function BookingWizard({
               `Continue to Payment (£${event!.price.toFixed(2)})`
             )}
           </Button>
-          {!isFreeForMember && <p className="text-center mt-4 text-sm font-light text-muted-foreground">Secure checkout via Stripe</p>}
+          {!isFreeForMember && <p className="text-center mt-4 text-sm font-light text-muted-foreground">Secure checkout via Mollie</p>}
         </div>
       )}
     </form>

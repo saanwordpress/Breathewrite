@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { CheckCircle2, Video } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { confirmCheckoutSession } from '@/lib/bookings'
+import { confirmPayment } from '@/lib/bookings'
+import { appBaseUrl } from '@/lib/url'
 import { getBookingById, type BookingRecord } from '@/lib/store'
 import { meetingProviderName } from '@/lib/meetings'
 import { formatLongDate, formatTime12h } from '@/lib/time'
@@ -52,10 +53,19 @@ export default async function BookingConfirmedPage({
 }) {
   const sp = await searchParams
 
-  // Returning from Stripe: only the payer has this session id, so showing the link here is fine.
-  if (typeof sp.session_id === 'string') {
-    const result = await confirmCheckoutSession(sp.session_id)
-    if (!result || result.type === 'unpaid') {
+  // Returning from Mollie: only the payer has this payment id, so showing the link here is fine.
+  if (typeof sp.payment_id === 'string') {
+    const result = await confirmPayment(sp.payment_id, await appBaseUrl())
+    if (result?.type === 'failed') {
+      return (
+        <Shell title="Payment not completed">
+          <p className="text-foreground/70 font-light">
+            Your payment didn&rsquo;t go through, so nothing has been booked or charged. Please go back to the calendar and try again.
+          </p>
+        </Shell>
+      )
+    }
+    if (!result || result.type === 'pending') {
       return (
         <Shell title="Payment received">
           <p className="text-foreground/70 font-light">

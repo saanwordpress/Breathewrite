@@ -65,7 +65,7 @@ export type BookingData = {
   endTime: string
   pricePaid: number
   status: 'CONFIRMED' | 'PENDING' | 'CANCELLED'
-  stripeSessionId?: string
+  paymentId?: string
   calendarEventId?: string
   customerEmail?: string
   meetingUrl?: string
@@ -81,7 +81,7 @@ export type UserData = {
   name: string
   isMember: boolean
   membershipExpiresAt?: string
-  stripeCustomerId?: string
+  paymentCustomerId?: string
   subscriptionId?: string
   passwordHash?: string
   role: 'ADMIN' | 'CUSTOMER'
