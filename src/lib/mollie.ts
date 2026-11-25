@@ -21,6 +21,8 @@ export type MollieSubscription = {
   id: string
   status: 'pending' | 'active' | 'canceled' | 'suspended' | 'completed'
   nextPaymentDate?: string // "YYYY-MM-DD"
+  times?: number | null // total charges before it completes; null = ongoing
+  timesRemaining?: number | null
   metadata: Record<string, string> | null
 }
 
@@ -72,6 +74,15 @@ export const listSubscriptions = (customerId: string) =>
 
 export const createSubscription = (customerId: string, body: Record<string, unknown>, idempotencyKey?: string) =>
   mollie<MollieSubscription>('POST', `/customers/${encodeURIComponent(customerId)}/subscriptions`, body, idempotencyKey)
+
+export const updateSubscription = (customerId: string, subscriptionId: string, body: Record<string, unknown>) =>
+  mollie<MollieSubscription>('PATCH', `/customers/${encodeURIComponent(customerId)}/subscriptions/${encodeURIComponent(subscriptionId)}`, body)
+
+export const countSubscriptionPayments = (customerId: string, subscriptionId: string) =>
+  mollie<{ count: number }>(
+    'GET',
+    `/customers/${encodeURIComponent(customerId)}/subscriptions/${encodeURIComponent(subscriptionId)}/payments?limit=250`
+  ).then(r => r.count)
 
 export const cancelSubscription = (customerId: string, subscriptionId: string) =>
   mollie<MollieSubscription>('DELETE', `/customers/${encodeURIComponent(customerId)}/subscriptions/${encodeURIComponent(subscriptionId)}`)

@@ -395,9 +395,9 @@ export default async function OfferingDetailPage({ params }: { params: Promise<{
                   Best Value
                 </div>
                 <h3 className="text-2xl font-heading mb-2">Become a Member</h3>
-                <p className="text-sm text-white/60 font-light mb-6">Stop paying per session. Get unlimited access to all group sessions and exclusive content.</p>
+                <p className="text-sm text-white/60 font-light mb-6">Stop paying per session. Unlimited online group classes, plus 20% off private classes and online courses.</p>
                 <ul className="space-y-3 mb-8">
-                  {['Unlimited eligible sessions', 'Priority booking', 'Exclusive member content'].map((feature, idx) => (
+                  {['Unlimited online group classes', '20% off private classes', '20% off online courses'].map((feature, idx) => (
                     <li key={idx} className="flex items-center gap-3 text-sm font-light text-white/80">
                       <CheckCircle2 className="w-4 h-4 text-[#EBCBBA]" /> {feature}
                     </li>

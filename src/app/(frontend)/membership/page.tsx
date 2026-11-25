@@ -1,15 +1,9 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Check } from 'lucide-react'
+import { MEMBERSHIP_PERKS, MEMBERSHIP_PRICE_GBP } from '@/lib/membership'
 
-const FEATURES = [
-  'Unlimited access to all Online Group Sessions',
-  'Exclusive member-only recordings library',
-  'Priority booking for special events & retreats',
-  '20% discount on Private 1:1 Sessions',
-  'Access to the private community dashboard',
-  'Cancel anytime. No lock-in contracts.',
-]
+const FEATURES = [...MEMBERSHIP_PERKS, 'Ongoing monthly membership. Cancel with one month’s notice.']
 
 export default function MembershipPage() {
   return (
@@ -19,7 +13,7 @@ export default function MembershipPage() {
         <div className="container mx-auto px-6 md:px-12 max-w-4xl">
           <h1 className="text-5xl md:text-7xl font-heading mb-6">The Breathwork Membership</h1>
           <p className="text-xl font-light text-primary-foreground/80 max-w-2xl mx-auto">
-            A sanctuary for consistent practice. Join our community to access unlimited live sessions, on-demand recordings, and deeper healing.
+            A sanctuary for consistent practice. Join to take unlimited live online group classes every month, with 20% off private classes and online courses.
           </p>
         </div>
       </section>
@@ -32,7 +26,7 @@ export default function MembershipPage() {
             <div className="text-center mb-12">
               <h2 className="text-3xl font-heading mb-4 text-foreground">Monthly Membership</h2>
               <div className="flex items-end justify-center gap-2 text-foreground">
-                <span className="text-6xl font-medium">£45</span>
+                <span className="text-6xl font-medium">£{MEMBERSHIP_PRICE_GBP}</span>
                 <span className="text-foreground/60 mb-2">/ month</span>
               </div>
             </div>
@@ -52,7 +46,7 @@ export default function MembershipPage() {
               <Link href="/book?membership=true">Become a Member</Link>
             </Button>
             <p className="text-center text-xs text-muted-foreground mt-6 font-light">
-              Secure payment via Mollie. Cancel anytime from your member dashboard.
+              You&rsquo;ll create an account first. Secure payment via Mollie. Cancel from your member dashboard with one month&rsquo;s notice.
             </p>
           </div>
         </div>
@@ -65,11 +59,11 @@ export default function MembershipPage() {
           <div className="space-y-8 text-left">
             <div className="bg-muted/30 p-8 rounded-2xl">
               <h3 className="text-xl font-medium mb-3">How do I book classes as a member?</h3>
-              <p className="font-light text-foreground/80 leading-relaxed">Once you are a member, you simply log into your dashboard, select the class you want to attend, and click "Reserve My Spot". You will not be charged again.</p>
+              <p className="font-light text-foreground/80 leading-relaxed">Once you are a member, you simply log into your dashboard, select the online class you want to attend, and click "Reserve My Spot". Online group classes are included at no extra charge.</p>
             </div>
             <div className="bg-muted/30 p-8 rounded-2xl">
-              <h3 className="text-xl font-medium mb-3">Can I cancel anytime?</h3>
-              <p className="font-light text-foreground/80 leading-relaxed">Yes. Cancel from your member dashboard at any time. You won't be charged again, and you keep access until the end of the month you've paid for.</p>
+              <h3 className="text-xl font-medium mb-3">How does cancelling work?</h3>
+              <p className="font-light text-foreground/80 leading-relaxed">Cancel from your member dashboard at any time with one month&rsquo;s notice. Your next monthly payment is still taken, your membership and discounts continue until a month after it, and nothing is charged after that.</p>
             </div>
           </div>
         </div>

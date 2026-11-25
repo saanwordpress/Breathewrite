@@ -1,11 +1,13 @@
 import {
   cancelSubscription,
+  countSubscriptionPayments,
   createSubscription,
   getPayment,
   getSubscription,
   gbp,
   isMollieConfigured,
   listSubscriptions,
+  updateSubscription,
   type MolliePayment,
 } from '@/lib/mollie'
 import { sendBookingEmails } from '@/lib/email'
@@ -259,20 +261,67 @@ export async function confirmPayment(
   }
 }
 
-// Stops future monthly payments. The member keeps access until the end of the period already paid for.
+export type MembershipBilling =
+  | { state: 'ongoing'; nextPaymentDate: string | null }
+  | { state: 'ending'; finalPaymentDate: string | null; endsOn: string | null }
+  | { state: 'none' }
+
+function addOneMonth(ymdDate: string): string {
+  const d = new Date(`${ymdDate}T12:00:00Z`)
+  d.setUTCMonth(d.getUTCMonth() + 1)
+  return ymd(d)
+}
+
+// Where the member's monthly payments stand, for the dashboard.
+export async function getMembershipBilling(userId: string): Promise<MembershipBilling> {
+  const member = await getMember(userId)
+  if (!isPaymentConfigured() || !member?.paymentCustomerId || !member.subscriptionId) return { state: 'none' }
+  try {
+    const sub = await getSubscription(member.paymentCustomerId, member.subscriptionId)
+    if (sub.status !== 'active' && sub.status !== 'pending') {
+      return { state: 'ending', finalPaymentDate: null, endsOn: member.membershipExpiresAt?.slice(0, 10) ?? null }
+    }
+    if (sub.times == null) return { state: 'ongoing', nextPaymentDate: sub.nextPaymentDate ?? null }
+    const next = sub.nextPaymentDate ?? null
+    return { state: 'ending', finalPaymentDate: next, endsOn: next ? addOneMonth(next) : member.membershipExpiresAt?.slice(0, 10) ?? null }
+  } catch (err) {
+    console.error('[MOLLIE] Could not read subscription:', err)
+    return { state: 'none' }
+  }
+}
+
+// One month's notice: the next monthly payment is still taken, then the subscription stops by itself
+// and the membership runs to the end of that last paid month.
 export async function cancelMembership(userId: string): Promise<boolean> {
   const member = await getMember(userId)
   if (!member?.paymentCustomerId || !member.subscriptionId) return false
+  const { paymentCustomerId: customerId, subscriptionId } = member
+  let stoppedNow = false
   try {
-    await cancelSubscription(member.paymentCustomerId, member.subscriptionId)
+    const sub = await getSubscription(customerId, subscriptionId)
+    if (sub.status === 'active' || sub.status === 'pending') {
+      if (sub.times == null) {
+        const charged = await countSubscriptionPayments(customerId, subscriptionId)
+        await updateSubscription(customerId, subscriptionId, { times: charged + 1 })
+      }
+    }
   } catch (err) {
-    // Already cancelled in Mollie (e.g. from the Mollie dashboard) is fine; anything else is a real failure.
-    if (!/\((404|410|422)\)/.test((err as Error).message)) {
-      console.error('[MOLLIE] Cancel subscription failed:', err)
-      return false
+    console.error('[MOLLIE] Cancel (notice) failed:', err)
+    // Fall back to stopping payments straight away rather than leaving the member unable to cancel.
+    try {
+      await cancelSubscription(customerId, subscriptionId)
+      stoppedNow = true
+    } catch (err2) {
+      if (!/\((404|410|422)\)/.test((err2 as Error).message)) {
+        console.error('[MOLLIE] Cancel subscription failed:', err2)
+        return false
+      }
     }
   }
-  await updateMember(userId, { subscriptionId: null })
-  await addAdminNotification(`Membership cancelled: member ${userId} cancelled their monthly membership (access until it expires).`)
+  await addAdminNotification(
+    stoppedNow
+      ? `Membership cancelled: member ${userId}. Payments stopped immediately (notice period could not be set); access runs to the end of the paid month.`
+      : `Membership cancelled: member ${userId} gave one month's notice. One final monthly payment will be taken.`
+  )
   return true
 }

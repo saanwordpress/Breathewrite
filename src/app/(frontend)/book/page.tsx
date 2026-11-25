@@ -45,7 +45,9 @@ export default async function BookPage({
           <p className="text-foreground/70 font-light">
             {wantsMembership && !event
               ? 'Create an account or log in, then pay securely online.'
-              : 'Single classes don’t need an account. Members: log in to book for free.'}
+              : event?.inPerson
+                ? 'Single classes don’t need an account.'
+                : 'Single classes don’t need an account. Members: log in to book online classes for free.'}
           </p>
         </div>
 
@@ -59,7 +61,7 @@ export default async function BookPage({
           account={account?.email ? { name: account.name ?? '', email: account.email } : null}
           membership={membership}
           alreadyBooked={alreadyBooked}
-          coveredByMembership={!!event && membershipCoversClass(membership, ukDateTimeToUtc(event.date, event.startTime))}
+          coveredByMembership={!!event && membershipCoversClass(membership, ukDateTimeToUtc(event.date, event.startTime), event.inPerson ? 'IN_PERSON' : 'ONLINE')}
           returnTo={returnTo}
           initialAddMembership={sp.addMembership === '1'}
         />

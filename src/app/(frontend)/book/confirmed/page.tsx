@@ -88,7 +88,7 @@ export default async function BookingConfirmedPage({
         <p className="text-foreground/70 font-light">
           {booking
             ? `A confirmation${booking.inPerson ? '' : ' with your joining link'} has been emailed to ${maskEmail(result.email)}.`
-            : `Your membership is active. Book any class on the calendar using ${maskEmail(result.email)} and it's included.`}
+            : `Your membership is active. Book any online class on the calendar while logged in as ${maskEmail(result.email)} and it's included, plus 20% off private classes and online courses.`}
         </p>
       </Shell>
     )
@@ -112,14 +112,14 @@ export default async function BookingConfirmedPage({
   if (sp.membership === 'active') {
     return (
       <Shell title="You're already a member">
-        <p className="text-foreground/70 font-light">Your membership is active. Pick any class on the calendar and book with the same email — it&rsquo;s included.</p>
+        <p className="text-foreground/70 font-light">Your membership is active. Log in and book any online class on the calendar — it&rsquo;s included.</p>
       </Shell>
     )
   }
 
   return (
     <Shell title="Welcome to the membership!">
-      <p className="text-foreground/70 font-light">Your membership is active. Pick any class on the calendar and book with the same email — it&rsquo;s included.</p>
+      <p className="text-foreground/70 font-light">Your membership is active. Log in and book any online class on the calendar — it&rsquo;s included.</p>
     </Shell>
   )
 }

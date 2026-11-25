@@ -63,8 +63,13 @@ export async function createCheckoutSession(
 
   const membership = account ? await getMembership(userId) : { active: false, expiresAt: null }
 
-  // Logged-in members book any class inside their membership period for free.
-  if (event && !wantsMembership && membershipCoversClass(membership, ukDateTimeToUtc(event.date, event.startTime))) {
+  // The membership covers online classes only, so it can't be bought "with" an in-person class.
+  if (wantsMembership && event?.deliveryMode === 'IN_PERSON') {
+    return { error: 'The membership covers online classes. Please book this in-person class on its own.' }
+  }
+
+  // Logged-in members book online classes inside their membership period for free.
+  if (event && !wantsMembership && membershipCoversClass(membership, ukDateTimeToUtc(event.date, event.startTime), event.deliveryMode ?? 'ONLINE')) {
     const booking = await fulfillBooking({ userId, customerEmail, customerName, event, pricePaid: 0, paymentLabel: 'Monthly membership (no charge)' })
     redirect(`/book/confirmed?b=${booking.id}`)
   }

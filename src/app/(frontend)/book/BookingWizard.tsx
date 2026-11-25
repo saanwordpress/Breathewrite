@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Check, Loader2, Video, AlertCircle, Sparkles, MapPin } from 'lucide-react'
 import { createCheckoutSession } from '@/app/actions/checkout'
-import { MEMBERSHIP_PRICE_GBP, type MembershipStatus } from '@/lib/membership'
+import { MEMBERSHIP_PERKS, MEMBERSHIP_PRICE_GBP, MEMBERSHIP_TERMS, type MembershipStatus } from '@/lib/membership'
 import { formatLongDate, formatTime12h, minutesBetween } from '@/lib/time'
 
 type BookingEvent = {
@@ -77,7 +77,7 @@ export function BookingWizard({
     return <Notice title="You're already booked" body="Your joining link is in your confirmation email and on your account page." href="/dashboard" cta="My Account" />
   }
   if (membershipOnly && membership.active) {
-    return <Notice title="You're already a member" body="Your membership is active. Pick any class on the calendar and book it free while logged in." href="/calendar" cta="Browse Classes" />
+    return <Notice title="You're already a member" body="Your membership is active. Pick any online class on the calendar and book it free while logged in." href="/calendar" cta="Browse Classes" />
   }
 
   const payingForMembership = membershipOnly || addMembership
@@ -138,9 +138,12 @@ export function BookingWizard({
       {membershipOnly && (
         <div className="bg-muted/30 p-6 rounded-2xl space-y-4">
           <h3 className="font-medium text-lg">Monthly Membership</h3>
-          <p className="text-sm font-light text-foreground/80">
-            Book any online group class on the calendar at no extra charge while your membership is active. Renews monthly; cancel anytime.
-          </p>
+          <ul className="space-y-2 text-sm font-light text-foreground/80">
+            {MEMBERSHIP_PERKS.map(perk => (
+              <li key={perk} className="flex items-start gap-2"><Check className="w-4 h-4 shrink-0 mt-0.5 text-[#5B8260]" />{perk}</li>
+            ))}
+          </ul>
+          <p className="text-xs font-light text-muted-foreground">{MEMBERSHIP_TERMS}</p>
           <div className="border-t border-border pt-4 flex justify-between font-medium">
             <span>Total</span>
             <span>£{MEMBERSHIP_PRICE_GBP}.00 / month</span>
@@ -164,7 +167,7 @@ export function BookingWizard({
         <div className="rounded-2xl border border-border p-6 space-y-4 text-center">
           <h3 className="font-medium text-lg">Membership needs an account</h3>
           <p className="text-sm font-light text-foreground/80">
-            Create an account (or log in) so you can book any class free while your membership is active. You&rsquo;ll come straight back here to pay.
+            Create an account (or log in) so you can book online classes free and get your member discounts. You&rsquo;ll come straight back here to pay.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button asChild className="rounded-full px-8"><Link href={`/signup?callbackUrl=${authReturn}`}>Create Account</Link></Button>
@@ -185,16 +188,16 @@ export function BookingWizard({
               {event?.inPerson ? 'Your booking confirmation will be sent here.' : `Your ${meetingLabel} link will be sent here.`}
             </span>
           </label>
-          <p className="flex items-start gap-2 text-xs text-muted-foreground font-light">
+          {!event?.inPerson && <p className="flex items-start gap-2 text-xs text-muted-foreground font-light">
             <Sparkles className="w-4 h-4 shrink-0 text-[#5B8260]" />
             <span>
               Already a member? <Link href={`/login?callbackUrl=${encodeURIComponent(returnTo)}`} className="underline underline-offset-4">Log in</Link> to book this class free.
             </span>
-          </p>
+          </p>}
         </div>
       )}
 
-      {event && !membership.active && (
+      {event && !event.inPerson && !membership.active && (
         <button
           type="button"
           onClick={() => setAddMembership(!addMembership)}
@@ -206,7 +209,7 @@ export function BookingWizard({
           <div>
             <h4 className="font-medium text-lg mb-1">Add Monthly Membership</h4>
             <p className="text-sm font-light text-foreground/70 mb-2">
-              £{MEMBERSHIP_PRICE_GBP}/month for unlimited classes. This class is included free when you join today.
+              £{MEMBERSHIP_PRICE_GBP}/month for unlimited online group classes, plus 20% off private classes and online courses. This class is included free when you join today. Cancel with one month&rsquo;s notice.
             </p>
             <span className="text-accent font-medium text-sm block">Highly Recommended</span>
           </div>

@@ -17,7 +17,7 @@ export default async function SignupPage({
           <div className="text-center">
             <h1 className="text-3xl font-heading mb-2">Create Your Account</h1>
             <p className="text-foreground/70 font-light text-sm">
-              An account is needed for membership, so you can book any class free while it&rsquo;s active.
+              An account is needed for membership, so you can book online classes free and get your member discounts while it&rsquo;s active.
             </p>
           </div>
 

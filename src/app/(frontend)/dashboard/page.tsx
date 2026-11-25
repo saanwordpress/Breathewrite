@@ -2,8 +2,9 @@ import { auth, signOut } from "@/auth"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { listUserBookings, getMember } from "@/lib/store"
-import { cancelMembership, getMembership } from "@/lib/bookings"
+import { listUserBookings } from "@/lib/store"
+import { cancelMembership, getMembership, getMembershipBilling } from "@/lib/bookings"
+import { MEMBERSHIP_PRICE_GBP } from "@/lib/membership"
 import { meetingProviderName } from "@/lib/meetings"
 import { formatLongDate, formatTime12h, isClassPast } from "@/lib/time"
 import { Video, Calendar, Sparkles, CheckCircle2 } from "lucide-react"
@@ -29,9 +30,8 @@ export default async function DashboardPage({
   const membership = userId ? await getMembership(userId) : { active: false, expiresAt: null }
   const isMember = membership.active
   const memberUntil = membership.expiresAt ? formatLongDate(membership.expiresAt.slice(0, 10)) : null
-  const member = isMember && userId ? await getMember(userId) : null
-  const canCancel = !!(member?.paymentCustomerId && member.subscriptionId)
-  const cancelled = !!(member?.paymentCustomerId && !member.subscriptionId)
+  const billing = isMember && userId ? await getMembershipBilling(userId) : { state: 'none' as const }
+  const fmt = (d: string | null) => (d ? formatLongDate(d) : null)
 
   const userBookings = (userId ? await listUserBookings(userId) : [])
     .map(b => ({ ...b, isPast: isClassPast(b.date, b.endTime || b.startTime) }))
@@ -45,13 +45,13 @@ export default async function DashboardPage({
     sp.booking === 'success' || sp.checkout === 'success'
       ? 'Your booking is confirmed! Your joining link has been emailed to you and is shown below.'
       : sp.membership === 'success'
-      ? 'Welcome to the membership! You can now book any class on the calendar at no extra charge.'
+      ? 'Welcome to the membership! You can now book any online group class at no extra charge, and get 20% off private classes and online courses.'
       : sp.booking === 'exists'
       ? "You're already booked into that class. Your joining link is below."
       : sp.membership === 'active'
       ? 'Your membership is already active.'
       : sp.membership === 'cancelled'
-      ? `Your membership has been cancelled. You won't be charged again${memberUntil ? `, and you can keep booking classes until ${memberUntil}` : ''}.`
+      ? "Your cancellation is confirmed. Under the one-month notice period, one final monthly payment will be taken and your membership ends a month after it. The dates are shown below."
       : sp.membership === 'cancel-failed'
       ? "We couldn't cancel your membership just now. Please try again, or email info@breathewrite.co.uk and we'll cancel it for you."
       : null
@@ -80,7 +80,7 @@ export default async function DashboardPage({
             <p className="text-muted-foreground text-sm font-light">
               {isMember
                 ? `Your monthly membership is active${memberUntil ? ` until ${memberUntil}` : ''}. You can book any available class on the calendar for free.`
-                : 'Book upcoming classes or upgrade to monthly membership for unlimited access.'}
+                : 'Book upcoming classes or join the monthly membership for unlimited online classes.'}
             </p>
           </div>
 
@@ -178,13 +178,22 @@ export default async function DashboardPage({
               {isMember ? (
                 <>
                   <h3 className="text-xl font-heading mb-3">Active Member Pass</h3>
+                  <p className="text-primary-foreground/80 font-light text-xs leading-relaxed mb-2">
+                    Unlimited online group classes, plus 20% off private classes and online courses.
+                  </p>
                   <p className="text-primary-foreground/80 font-light text-xs leading-relaxed mb-6">
-                    You have unlimited access to live online group sessions{memberUntil ? ` until ${memberUntil}` : ''}. Visit the calendar to reserve any available date for £0.
+                    {billing.state === 'ongoing'
+                      ? `£${MEMBERSHIP_PRICE_GBP} a month${billing.nextPaymentDate ? `, next payment on ${fmt(billing.nextPaymentDate)}` : ''}.`
+                      : billing.state === 'ending'
+                      ? `Cancelled with one month's notice.${billing.finalPaymentDate ? ` Final payment of £${MEMBERSHIP_PRICE_GBP} on ${fmt(billing.finalPaymentDate)}.` : ''}${billing.endsOn ? ` Membership ends on ${fmt(billing.endsOn)}.` : ''}`
+                      : memberUntil
+                      ? `Active until ${memberUntil}.`
+                      : ''}
                   </p>
                   <Button asChild variant="secondary" className="w-full rounded-full">
-                    <Link href="/calendar">Book Class for £0</Link>
+                    <Link href="/calendar">Book an Online Class for £0</Link>
                   </Button>
-                  {canCancel && (
+                  {billing.state === 'ongoing' && (
                     // Two steps (open, then confirm) so the membership can't be cancelled by a stray click.
                     <details className="mt-3 text-center">
                       <summary className="cursor-pointer list-none rounded-full py-2 text-sm text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10">
@@ -199,7 +208,9 @@ export default async function DashboardPage({
                         }}
                       >
                         <p className="text-xs font-light text-primary-foreground/80">
-                          You won&rsquo;t be charged again{memberUntil ? ` and keep access until ${memberUntil}` : ''}.
+                          Cancelling needs one month&rsquo;s notice: your next monthly payment
+                          {billing.nextPaymentDate ? ` (${fmt(billing.nextPaymentDate)})` : ''} will still be taken, and your
+                          membership and discounts continue until a month after it. No payments after that.
                         </p>
                         <Button type="submit" variant="secondary" className="w-full rounded-full">
                           Yes, cancel my membership
@@ -207,20 +218,15 @@ export default async function DashboardPage({
                       </form>
                     </details>
                   )}
-                  {cancelled && (
-                    <p className="mt-4 text-center text-xs font-light text-primary-foreground/80">
-                      Cancelled. You won&rsquo;t be charged again.
-                    </p>
-                  )}
                 </>
               ) : (
                 <>
                   <h3 className="text-xl font-heading mb-3">Monthly Membership</h3>
                   <p className="text-primary-foreground/80 font-light text-xs leading-relaxed mb-6">
-                    Unlock unlimited access to all live sessions for £45/month.
+                    Unlimited online group classes, plus 20% off private classes and online courses, for £{MEMBERSHIP_PRICE_GBP} a month.
                   </p>
                   <Button asChild variant="secondary" className="w-full rounded-full">
-                    <Link href="/membership">Upgrade for £45/mo</Link>
+                    <Link href="/membership">Join for £{MEMBERSHIP_PRICE_GBP}/month</Link>
                   </Button>
                 </>
               )}
