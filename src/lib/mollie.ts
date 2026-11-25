@@ -75,3 +75,17 @@ export const createSubscription = (customerId: string, body: Record<string, unkn
 
 export const cancelSubscription = (customerId: string, subscriptionId: string) =>
   mollie<MollieSubscription>('DELETE', `/customers/${encodeURIComponent(customerId)}/subscriptions/${encodeURIComponent(subscriptionId)}`)
+
+// Lists enabled payment methods, to confirm the key is accepted and payments can be taken (creates nothing).
+export async function checkMollieConnection(): Promise<{ ok: boolean; detail: string }> {
+  if (!isMollieConfigured()) return { ok: false, detail: 'MOLLIE_API_KEY not set' }
+  try {
+    const r = await mollie<{ _embedded?: { methods: { id: string }[] } }>('GET', '/methods?amount[value]=10.00&amount[currency]=GBP')
+    const methods = r._embedded?.methods.map(m => m.id) ?? []
+    return methods.length
+      ? { ok: true, detail: `${isMollieTestMode() ? 'Test' : 'Live'} key accepted; GBP methods: ${methods.join(', ')}` }
+      : { ok: false, detail: 'Key accepted, but no payment methods are enabled for GBP' }
+  } catch (error) {
+    return { ok: false, detail: (error as Error).message.slice(0, 300) }
+  }
+}

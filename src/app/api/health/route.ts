@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { checkZoomConnection } from '@/lib/zoom'
-import { isMollieConfigured, isMollieTestMode } from '@/lib/mollie'
+import { checkMollieConnection } from '@/lib/mollie'
 import { Resend } from 'resend'
 import { senderAddress } from '@/lib/email'
 
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     database,
     zoom: await checkZoomConnection(),
-    payments: { mollieKey: isMollieConfigured(), mode: isMollieConfigured() ? (isMollieTestMode() ? 'test' : 'live') : null },
+    payments: await checkMollieConnection(),
     email: { resendKey: !!process.env.RESEND_API_KEY, from: senderAddress(), ...(testEmail ? { testEmail } : {}) },
   })
 }
