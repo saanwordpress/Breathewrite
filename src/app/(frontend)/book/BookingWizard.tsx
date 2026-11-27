@@ -29,7 +29,9 @@ type Props = {
   account: { name: string; email: string } | null
   membership: MembershipStatus
   alreadyBooked: boolean
-  coveredByMembership: boolean
+  coverageLabel: string | null
+  classPrice: number
+  discountPercent: number
   returnTo: string
   initialAddMembership: boolean
 }
@@ -59,7 +61,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export function BookingWizard({
   eventId, event, membershipOnly, isPast, canceled, meetingLabel,
-  account, membership, alreadyBooked, coveredByMembership, returnTo, initialAddMembership,
+  account, membership, alreadyBooked, coverageLabel, classPrice, discountPercent, returnTo, initialAddMembership,
 }: Props) {
   const [addMembership, setAddMembership] = useState(membershipOnly || (initialAddMembership && !membership.active))
   const [name, setName] = useState('')
@@ -81,7 +83,7 @@ export function BookingWizard({
   }
 
   const payingForMembership = membershipOnly || addMembership
-  const isFreeForMember = !!event && coveredByMembership && !addMembership
+  const isFreeForMember = !!event && !!coverageLabel && !addMembership
   const needsAccount = payingForMembership && !account
   const authReturn = encodeURIComponent(event && addMembership ? `${returnTo}&addMembership=1` : returnTo)
 
@@ -129,7 +131,16 @@ export function BookingWizard({
                 <span className="line-through text-muted-foreground font-light">£{event.price.toFixed(2)}</span> £0.00
               </span>
             ) : (
-              <span>{payingForMembership ? `£${MEMBERSHIP_PRICE_GBP}.00 / month` : `£${event.price.toFixed(2)}`}</span>
+              payingForMembership ? (
+                <span>£{MEMBERSHIP_PRICE_GBP}.00 / month</span>
+              ) : discountPercent > 0 ? (
+                <span className="flex items-center gap-2">
+                  <span className="line-through text-muted-foreground font-light">£{event.price.toFixed(2)}</span> £{classPrice.toFixed(2)}
+                  <span className="text-xs font-light text-[#5B8260]">({discountPercent}% member discount)</span>
+                </span>
+              ) : (
+                <span>£{event.price.toFixed(2)}</span>
+              )
             )}
           </div>
         </div>
@@ -154,7 +165,7 @@ export function BookingWizard({
       {isFreeForMember && (
         <div className="flex items-start gap-3 rounded-2xl border border-[#5B8260]/40 bg-[#5B8260]/10 p-5 text-sm">
           <Sparkles className="w-5 h-5 shrink-0 text-[#5B8260]" />
-          <span><strong>Included in your membership.</strong> No payment needed.</span>
+          <span><strong>{coverageLabel}.</strong> No payment needed.</span>
         </div>
       )}
 
@@ -191,13 +202,13 @@ export function BookingWizard({
           {!event?.inPerson && <p className="flex items-start gap-2 text-xs text-muted-foreground font-light">
             <Sparkles className="w-4 h-4 shrink-0 text-[#5B8260]" />
             <span>
-              Already a member? <Link href={`/login?callbackUrl=${encodeURIComponent(returnTo)}`} className="underline underline-offset-4">Log in</Link> to book this class free.
+              Have a membership or package? <Link href={`/login?callbackUrl=${encodeURIComponent(returnTo)}`} className="underline underline-offset-4">Log in</Link> to use it for this class.
             </span>
           </p>}
         </div>
       )}
 
-      {event && !event.inPerson && !membership.active && (
+      {event && !event.inPerson && !membership.active && !coverageLabel && (
         <button
           type="button"
           onClick={() => setAddMembership(!addMembership)}
@@ -233,7 +244,7 @@ export function BookingWizard({
             ) : payingForMembership ? (
               `Continue to Payment (£${MEMBERSHIP_PRICE_GBP}/month)`
             ) : (
-              `Continue to Payment (£${event!.price.toFixed(2)})`
+              `Continue to Payment (£${classPrice.toFixed(2)})`
             )}
           </Button>
           {!isFreeForMember && <p className="text-center mt-4 text-sm font-light text-muted-foreground">Secure checkout via Mollie</p>}

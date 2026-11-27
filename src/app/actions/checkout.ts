@@ -15,7 +15,9 @@ import {
 } from "@/lib/bookings"
 import { getAccount, getMember, updateMember, upsertCustomer } from "@/lib/store"
 import { auth } from "@/auth"
-import { MEMBERSHIP_PRICE_GBP, membershipCoversClass } from "@/lib/membership"
+import { MEMBERSHIP_PRICE_GBP } from "@/lib/membership"
+import { isOnlineGroupClass } from "@/lib/packages"
+import { discounted, privateDiscount, resolveCoverage } from "@/lib/package-store"
 import { isClassPast, ukDateTimeToUtc, formatLongDate, formatTime12h } from "@/lib/time"
 
 export type CheckoutResult = { error: string } | undefined
@@ -63,18 +65,37 @@ export async function createCheckoutSession(
 
   const membership = account ? await getMembership(userId) : { active: false, expiresAt: null }
 
-  // The membership covers online classes only, so it can't be bought "with" an in-person class.
-  if (wantsMembership && event?.deliveryMode === 'IN_PERSON') {
-    return { error: 'The membership covers online classes. Please book this in-person class on its own.' }
+  const cls = event ? { title: event.title, startTime: event.startTime, endTime: event.endTime, deliveryMode: event.deliveryMode } : null
+  const classStart = event ? ukDateTimeToUtc(event.date, event.startTime) : null
+
+  // The membership covers online group classes only, so it can't be bought "with" any other class.
+  if (wantsMembership && cls && !isOnlineGroupClass(cls)) {
+    return { error: 'The membership covers online group classes. Please book this class on its own.' }
   }
 
-  // Logged-in members book online classes inside their membership period for free.
-  if (event && !wantsMembership && membershipCoversClass(membership, ukDateTimeToUtc(event.date, event.startTime), event.deliveryMode ?? 'ONLINE')) {
-    const booking = await fulfillBooking({ userId, customerEmail, customerName, event, pricePaid: 0, paymentLabel: 'Monthly membership (no charge)' })
-    redirect(`/book/confirmed?b=${booking.id}`)
+  // Logged-in members use their membership, pass or package credits (in that order) instead of paying.
+  if (event && cls && classStart && !wantsMembership && account) {
+    const coverage = await resolveCoverage(userId, membership, cls, classStart)
+    if (coverage) {
+      const paymentLabel =
+        coverage.kind === 'membership'
+          ? 'Monthly membership (no charge)'
+          : coverage.kind === 'pass'
+          ? `${coverage.label.replace('Included in your ', '')} (no charge)`
+          : `Package session (${coverage.remainingAfter} left)`
+      const booking = await fulfillBooking({
+        userId, customerEmail, customerName, event, pricePaid: 0, paymentLabel,
+        packagePurchaseId: coverage.kind === 'membership' ? undefined : coverage.purchaseId,
+      })
+      redirect(`/book/confirmed?b=${booking.id}`)
+    }
   }
 
-  if (event && !wantsMembership && event.price <= 0) {
+  // Members and Tribe pass holders get 20% off private sessions.
+  const discount = event && cls && classStart && !wantsMembership ? await privateDiscount(account ? userId : null, membership, cls, classStart) : 0
+  const classPrice = event ? discounted(event.price, discount) : 0
+
+  if (event && !wantsMembership && classPrice <= 0) {
     const booking = await fulfillBooking({ userId, customerEmail, customerName, event, pricePaid: 0, paymentLabel: 'Free class' })
     redirect(`/book/confirmed?b=${booking.id}`)
   }
@@ -96,7 +117,7 @@ export async function createCheckoutSession(
       const booking = await fulfillBooking({ userId, customerEmail, customerName, event, pricePaid: 0, paymentLabel: 'Included with new monthly membership (simulated payment)' })
       redirect(`/book/confirmed?b=${booking.id}&membership=new`)
     }
-    const booking = await fulfillBooking({ userId, customerEmail, customerName, event: event!, pricePaid: event!.price, paymentLabel: `£${event!.price.toFixed(2)} (simulated payment)` })
+    const booking = await fulfillBooking({ userId, customerEmail, customerName, event: event!, pricePaid: classPrice, paymentLabel: `£${classPrice.toFixed(2)} (simulated payment)` })
     redirect(`/book/confirmed?b=${booking.id}`)
   }
 
@@ -122,7 +143,7 @@ export async function createCheckoutSession(
     }
 
     const payment = await createPayment({
-      amount: gbp(wantsMembership ? MEMBERSHIP_PRICE_GBP : event!.price),
+      amount: gbp(wantsMembership ? MEMBERSHIP_PRICE_GBP : classPrice),
       description: wantsMembership
         ? event
           ? `Breathe Write Monthly Membership (includes ${event.title} on ${formatLongDate(event.date)})`

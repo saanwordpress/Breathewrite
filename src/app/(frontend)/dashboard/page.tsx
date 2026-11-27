@@ -5,6 +5,7 @@ import Link from "next/link"
 import { listUserBookings } from "@/lib/store"
 import { cancelMembership, getMembership, getMembershipBilling } from "@/lib/bookings"
 import { MEMBERSHIP_PRICE_GBP } from "@/lib/membership"
+import { listActivePackages } from "@/lib/package-store"
 import { meetingProviderName } from "@/lib/meetings"
 import { formatLongDate, formatTime12h, isClassPast } from "@/lib/time"
 import { Video, Calendar, Sparkles, CheckCircle2 } from "lucide-react"
@@ -32,6 +33,7 @@ export default async function DashboardPage({
   const memberUntil = membership.expiresAt ? formatLongDate(membership.expiresAt.slice(0, 10)) : null
   const billing = isMember && userId ? await getMembershipBilling(userId) : { state: 'none' as const }
   const fmt = (d: string | null) => (d ? formatLongDate(d) : null)
+  const packages = userId ? await listActivePackages(userId) : []
 
   const userBookings = (userId ? await listUserBookings(userId) : [])
     .map(b => ({ ...b, isPast: isClassPast(b.date, b.endTime || b.startTime) }))
@@ -136,7 +138,7 @@ export default async function DashboardPage({
                       </div>
                       <p className="text-xs text-muted-foreground font-light">
                         {formatLongDate(booking.date)} · {formatTime12h(booking.startTime)} – {formatTime12h(booking.endTime)} (UK)
-                        {booking.pricePaid === 0 ? ' · Membership' : ` · £${booking.pricePaid.toFixed(2)}`}
+                        {booking.pricePaid === 0 ? ' · Included' : ` · £${booking.pricePaid.toFixed(2)}`}
                       </p>
                       {booking.meetingId && booking.meetingPassword && !booking.isPast && (
                         <p className="text-xs text-muted-foreground font-light mt-1">
@@ -173,6 +175,25 @@ export default async function DashboardPage({
 
           {/* Sidebar */}
           <div className="space-y-6">
+            <h2 className="text-2xl font-heading text-primary">My Packages</h2>
+            <div className="bg-white border border-border/40 rounded-3xl p-6 shadow-sm space-y-4">
+              {packages.length === 0 ? (
+                <p className="text-sm font-light text-muted-foreground">No active packages.</p>
+              ) : (
+                packages.map(p => (
+                  <div key={p.id} className="text-sm">
+                    <p className="font-medium text-primary">{p.name}</p>
+                    <p className="font-light text-muted-foreground text-xs">
+                      {p.remaining === null ? 'Unlimited online group classes' : `${p.remaining} of ${p.credits} sessions left`} · valid until {formatLongDate(p.validUntil.toISOString().slice(0, 10))}
+                    </p>
+                  </div>
+                ))
+              )}
+              <Button asChild variant="outline" size="sm" className="w-full rounded-full text-xs">
+                <Link href="/packages">{packages.length ? 'Buy another package' : 'See packages'}</Link>
+              </Button>
+            </div>
+
             <h2 className="text-2xl font-heading text-primary">Membership Status</h2>
             <div className="bg-primary text-primary-foreground rounded-3xl p-8 shadow-md">
               {isMember ? (

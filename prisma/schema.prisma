@@ -54,9 +54,29 @@ model User {
   accounts      Account[]
   sessions      Session[]
   bookings      Booking[]
+  packages      PackagePurchase[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+// A bought class package (credits for one class type) or pass (unlimited online group classes).
+model PackagePurchase {
+  id          String    @id @default(cuid())
+  userId      String
+  packageSlug String              // key in src/lib/packages.ts
+  packageName String
+  credits     Int?                // null = unlimited pass
+  pricePaid   Float     @default(0)
+  validFrom   DateTime
+  validUntil  DateTime            // classes must start on or before this
+  paymentId   String?   @unique   // Mollie payment (tr_…)
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings    Booking[]
+
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -103,9 +123,11 @@ model Booking {
   meetingHostUrl  String?
   meetingId       String?
   meetingPassword String?
+  packagePurchaseId String?   // set when the booking used a package credit
 
   user            User      @relation(fields: [userId], references: [id])
   calendarEvent   CalendarEvent? @relation(fields: [calendarEventId], references: [id])
+  packagePurchase PackagePurchase? @relation(fields: [packagePurchaseId], references: [id], onDelete: SetNull)
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -114,6 +136,7 @@ model Booking {
   @@index([startTime, endTime])
   @@index([userId])
   @@index([calendarEventId])
+  @@index([packagePurchaseId])
 }
 
 enum BookingStatus {

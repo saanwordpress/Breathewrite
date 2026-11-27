@@ -76,7 +76,8 @@ export function Footer() {
               <Link href="/calendar" className="text-primary-foreground/70 hover:text-accent transition-colors">Calendar</Link>
             </li>
             <li>
-              <Link href="/membership" className="text-primary-foreground/70 hover:text-accent transition-colors">Membership</Link>
+              <Link href="/membership" className="text-primary-foreground/70 hover:text-accent transition-colors">Membership</Link></li>
+              <li><Link href="/packages" className="text-primary-foreground/70 hover:text-accent transition-colors">Packages</Link>
             </li>
           </ul>
         </div>

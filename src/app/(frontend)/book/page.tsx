@@ -4,7 +4,7 @@ import { isClassPast, ukDateTimeToUtc } from '@/lib/time'
 import { auth } from '@/auth'
 import { getAccount } from '@/lib/store'
 import { findUserBookingForEvent, getMembership } from '@/lib/bookings'
-import { membershipCoversClass } from '@/lib/membership'
+import { discounted, privateDiscount, resolveCoverage } from '@/lib/package-store'
 import { BookingWizard } from './BookingWizard'
 
 export const dynamic = 'force-dynamic'
@@ -35,6 +35,11 @@ export default async function BookPage({
   const alreadyBooked = !!(account && event && (await findUserBookingForEvent(account.id, event.id)))
   const returnTo = eventId ? `/book?eventId=${eventId}` : '/book?membership=true'
 
+  const cls = event ? { title: event.title, startTime: event.startTime, endTime: event.endTime, deliveryMode: event.inPerson ? 'IN_PERSON' : 'ONLINE' } : null
+  const classStart = event ? ukDateTimeToUtc(event.date, event.startTime) : null
+  const coverage = account && cls && classStart ? await resolveCoverage(account.id, membership, cls, classStart) : null
+  const discount = cls && classStart ? await privateDiscount(account?.id ?? null, membership, cls, classStart) : 0
+
   return (
     <div className="flex flex-col w-full bg-background min-h-screen pt-24 pb-24">
       <div className="container mx-auto px-6 max-w-2xl">
@@ -61,7 +66,9 @@ export default async function BookPage({
           account={account?.email ? { name: account.name ?? '', email: account.email } : null}
           membership={membership}
           alreadyBooked={alreadyBooked}
-          coveredByMembership={!!event && membershipCoversClass(membership, ukDateTimeToUtc(event.date, event.startTime), event.inPerson ? 'IN_PERSON' : 'ONLINE')}
+          coverageLabel={coverage?.label ?? null}
+          classPrice={event ? discounted(event.price, discount) : 0}
+          discountPercent={Math.round(discount * 100)}
           returnTo={returnTo}
           initialAddMembership={sp.addMembership === '1'}
         />

@@ -74,6 +74,24 @@ export default async function BookingConfirmedPage({
         </Shell>
       )
     }
+    if (result.type === 'package') {
+      return (
+        <Shell title="Your package is ready">
+          {result.pkg ? (
+            <p className="text-foreground/70 font-light">
+              <strong className="font-medium">{result.pkg.name}</strong>:{' '}
+              {result.pkg.credits === null ? 'unlimited online group classes' : `${result.pkg.credits} sessions`} to use on or before {formatLongDate(result.pkg.validUntil)}.
+              Log in and book from the calendar; your package is applied automatically.
+            </p>
+          ) : (
+            <p className="text-foreground/70 font-light">Your payment is confirmed. Your package will appear in your account in a moment.</p>
+          )}
+          <Button asChild className="rounded-full px-8">
+            <Link href="/dashboard">My Account</Link>
+          </Button>
+        </Shell>
+      )
+    }
     const { booking } = result
     return (
       <Shell title={booking ? "You're booked!" : 'Welcome to the membership!'}>

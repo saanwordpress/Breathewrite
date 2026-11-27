@@ -1,3 +1,5 @@
+import { isOnlineGroupClass, type ClassInfo } from '@/lib/packages'
+
 export const MEMBERSHIP_PRICE_GBP = 75
 
 // Members get this off private classes and online courses (applied once those packages are on the site).
@@ -16,9 +18,9 @@ export type MembershipStatus = {
   expiresAt: string | null
 }
 
-// Membership includes online group classes only; in-person classes are always paid for.
-export function membershipCoversClass(membership: MembershipStatus, classStartUtc: Date, deliveryMode: string): boolean {
-  if (deliveryMode === 'IN_PERSON') return false
+// Membership includes online group classes only; in-person classes and private sessions are paid for.
+export function membershipCoversClass(membership: MembershipStatus, classStartUtc: Date, cls: ClassInfo): boolean {
+  if (!isOnlineGroupClass(cls)) return false
   if (!membership.active) return false
   if (!membership.expiresAt) return true
   return classStartUtc.getTime() < new Date(membership.expiresAt).getTime()

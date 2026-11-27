@@ -10,6 +10,7 @@ import { Button, buttonVariants } from '../ui/button'
 const NAV_LINKS = [
   { name: 'Calendar', href: '/calendar' },
   { name: 'Membership', href: '/membership' },
+  { name: 'Packages', href: '/packages' },
 ]
 
 export function Header() {

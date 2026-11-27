@@ -4,6 +4,7 @@ import AdminBookingAlertEmail from '@/emails/AdminBookingAlert'
 import type { MeetingInfo } from '@/lib/store'
 import { meetingProviderName } from '@/lib/meetings'
 import { primaryAdminEmail } from '@/lib/admin'
+import type { PackageDef } from '@/lib/packages'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
@@ -90,4 +91,48 @@ export async function sendBookingEmails(details: BookingEmailDetails) {
   })
 
   return { success: results.every(r => r.status === 'fulfilled' && !r.value.error) }
+}
+
+const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
+
+// Package purchase: confirmation to the customer, alert to the admin.
+export async function sendPackageEmails({ customerEmail, customerName, pkg, validUntil }: {
+  customerEmail: string
+  customerName: string
+  pkg: PackageDef
+  validUntil: string
+}) {
+  const adminEmail = primaryAdminEmail()
+  const what = pkg.credits === null ? 'unlimited online group classes' : `${pkg.credits} sessions`
+  const site = process.env.NEXT_PUBLIC_APP_URL || 'https://breathewrite-2n6s.vercel.app'
+  if (!resend) {
+    console.warn(`[EMAIL DEV] Package ${pkg.name} for ${customerEmail}, valid until ${validUntil}`)
+    return
+  }
+  const results = await Promise.allSettled([
+    resend.emails.send({
+      from: senderAddress(),
+      to: [customerEmail],
+      replyTo: adminEmail,
+      subject: `Your ${pkg.name} package is ready`,
+      html: `<div style="font-family:Georgia,serif;max-width:560px;margin:auto;color:#2b2b2b;line-height:1.6">
+<h2 style="font-weight:normal">Thank you, ${esc(customerName)}</h2>
+<p>Your <strong>${esc(pkg.name)}</strong> package is active: ${esc(pkg.summary)}.</p>
+<p>You have <strong>${what}</strong> to use on or before <strong>${esc(validUntil)}</strong>.</p>
+<p>To book, log in and choose a class on the calendar. Your package is applied automatically, so there is nothing to pay.</p>
+${pkg.note ? `<p><em>${esc(pkg.note)}.</em></p>` : ''}
+<p><a href="${site}/calendar" style="background:#4A6FA5;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none">Book a class</a></p>
+<p style="color:#777;font-size:13px">Breathe Write</p></div>`,
+    }),
+    resend.emails.send({
+      from: senderAddress(),
+      to: [adminEmail],
+      subject: `New package: ${pkg.name} – ${customerName}`,
+      text: `${customerName} <${customerEmail}> bought ${pkg.name} (${pkg.summary}) for £${pkg.price.toFixed(2)}. Valid until ${validUntil}.`,
+    }),
+  ])
+  results.forEach(r => {
+    if (r.status === 'rejected') console.error('[EMAIL] Package email failed:', r.reason)
+    else if (r.value.error) console.error('[EMAIL] Package email failed:', r.value.error)
+  })
 }

@@ -10,7 +10,9 @@ import {
   updateSubscription,
   type MolliePayment,
 } from '@/lib/mollie'
-import { sendBookingEmails } from '@/lib/email'
+import { sendBookingEmails, sendPackageEmails } from '@/lib/email'
+import { createPackagePurchase, findPackageByPaymentId } from '@/lib/package-store'
+import { getPackage, packageValidUntil } from '@/lib/packages'
 import { ensureClassMeeting } from '@/lib/meetings'
 import { formatLongDate, formatTime12h, minutesBetween, ukDateTimeToUtc } from '@/lib/time'
 import { MEMBERSHIP_PRICE_GBP, type MembershipStatus } from '@/lib/membership'
@@ -65,6 +67,7 @@ type FulfillArgs = {
   pricePaid: number
   paymentLabel: string
   paymentId?: string
+  packagePurchaseId?: string
 }
 
 export async function fulfillBooking(args: FulfillArgs): Promise<BookingRecord> {
@@ -85,6 +88,7 @@ async function doFulfillBooking({
   pricePaid,
   paymentLabel,
   paymentId,
+  packagePurchaseId,
 }: FulfillArgs): Promise<BookingRecord> {
   const existing =
     (paymentId && (await findBookingByPaymentId(paymentId))) ||
@@ -107,6 +111,7 @@ async function doFulfillBooking({
     pricePaid,
     customerEmail,
     paymentId,
+    packagePurchaseId,
     meeting,
   })
 
@@ -224,6 +229,26 @@ export async function fulfillMolliePayment(payment: MolliePayment, baseUrl: stri
     return
   }
 
+  if (meta.type === 'package' && meta.packageSlug) {
+    const pkg = getPackage(meta.packageSlug)
+    if (!pkg) return console.error(`[CHECKOUT] Unknown package ${meta.packageSlug} for payment ${payment.id}`)
+    const paidAt = payment.paidAt ? new Date(payment.paidAt) : new Date()
+    const validUntil = packageValidUntil(paidAt, pkg.validMonths)
+    const { created } = await createPackagePurchase({
+      userId,
+      slug: pkg.slug,
+      paymentId: payment.id,
+      pricePaid: Number(payment.amount.value),
+      validFrom: paidAt,
+      validUntil,
+    })
+    if (created) {
+      await addAdminNotification(`New Package: ${customerName} (${customerEmail}) bought ${pkg.name} for £${Number(payment.amount.value).toFixed(2)}.`)
+      await sendPackageEmails({ customerEmail, customerName, pkg, validUntil: formatLongDate(ymd(validUntil)) })
+    }
+    return
+  }
+
   if (meta.type === 'booking' && meta.eventId) {
     const event = await getCalendarEventById(meta.eventId)
     if (!event) return console.error(`[CHECKOUT] Event ${meta.eventId} not found for payment ${payment.id}`)
@@ -244,16 +269,18 @@ export async function fulfillMolliePayment(payment: MolliePayment, baseUrl: stri
 export async function confirmPayment(
   paymentId: string,
   baseUrl: string
-): Promise<{ type: string; booking: BookingRecord | null; email: string } | null> {
+): Promise<{ type: string; booking: BookingRecord | null; email: string; pkg: { name: string; credits: number | null; validUntil: string } | null } | null> {
   if (!isPaymentConfigured() || !/^tr_\w+$/.test(paymentId)) return null
   try {
     const payment = await getPayment(paymentId)
     await fulfillMolliePayment(payment, baseUrl)
     const waiting = payment.status === 'open' || payment.status === 'pending' || payment.status === 'authorized'
+    const pkgRow = payment.metadata?.type === 'package' ? await findPackageByPaymentId(payment.id) : null
     return {
       type: payment.status === 'paid' ? payment.metadata?.type ?? 'booking' : waiting ? 'pending' : 'failed',
       booking: await findBookingByPaymentId(payment.id),
       email: payment.metadata?.customerEmail || '',
+      pkg: pkgRow ? { name: pkgRow.packageName, credits: pkgRow.credits, validUntil: ymd(pkgRow.validUntil) } : null,
     }
   } catch (err) {
     console.error('[CHECKOUT] Could not confirm payment on return:', err)

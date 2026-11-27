@@ -62,6 +62,7 @@ export type NewBooking = {
   pricePaid: number
   customerEmail: string
   paymentId?: string
+  packagePurchaseId?: string
   meeting: MeetingInfo | null
 }
 
@@ -259,6 +260,7 @@ export async function createBooking(data: NewBooking): Promise<BookingRecord> {
         pricePaid: data.pricePaid,
         status: 'CONFIRMED',
         paymentId: data.paymentId,
+        packagePurchaseId: data.packagePurchaseId,
         customerEmail: data.customerEmail,
         ...meeting,
       },
